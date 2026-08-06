@@ -1,0 +1,59 @@
+<!-- 轮播图 -->
+<swiper class="banner-swiper" indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#e8873a" autoplay circular bindtouchstart="onSwipeStart" bindtouchend="onSwipeEnd">
+  <swiper-item wx:for="{{banners}}" wx:key="id">
+    <view class="banner-slide">
+      <view class="banner-tag">FRESH ROAST</view>
+      <view class="banner-text">{{item.title}}</view>
+    </view>
+  </swiper-item>
+</swiper>
+
+<!-- 分类横滚条 -->
+<scroll-view class="category-bar" scroll-x enhanced show-scrollbar="{{false}}">
+  <view class="category-bar-inner">
+    <view class="category-item {{activeCategory === item.id ? 'active' : ''}}"
+          wx:for="{{categories}}" wx:key="id"
+          data-id="{{item.id}}" bindtap="onCategoryTap">
+      {{item.name}}
+      <view wx:if="{{activeCategory === item.id}}" class="cat-dot"></view>
+    </view>
+  </view>
+</scroll-view>
+
+<!-- 页面主体（桌面端居中） -->
+<view class="page-body" style="max-width: {{maxWidth > 0 ? maxWidth + 'px' : 'none'}}; margin: {{maxWidth > 0 ? '0 auto' : '0'}};" bindtouchstart="onSwipeStart" bindtouchend="onSwipeEnd">
+  <view class="container">
+    <view class="section-header" wx:if="{{products.length > 0}}">
+      <view class="section-title">推荐商品</view>
+      <view class="section-sub">精心烘焙，新鲜直达</view>
+    </view>
+
+    <!-- 响应式商品网格 -->
+    <view class="product-grid" style="gap: {{cardGap}}rpx;">
+      <view class="product-card"
+            wx:for="{{products}}" wx:key="id"
+            style="width: calc((100% - {{(gridCols - 1) * cardGap}}rpx) / {{gridCols}});"
+            data-id="{{item.id}}" bindtap="onProductTap">
+        <view class="product-img-wrap">
+          <view class="product-img-placeholder">
+            <text class="product-img-icon">☕</text>
+          </view>
+          <view class="product-badge" wx:if="{{item.stock <= 5 && item.stock > 0}}">限</view>
+        </view>
+        <view class="product-info">
+          <view class="product-name">{{item.name}}</view>
+          <view class="product-cat">{{item.category_name}}</view>
+          <view class="product-bottom">
+            <view class="product-price">¥{{item.price}}</view>
+            <view class="product-buy-icon">+</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!loading && products.length === 0}}" class="empty-state">
+      <view class="empty-icon">☕</view>
+      <view class="empty-text">暂无商品</view>
+    </view>
+  </view>
+</view>

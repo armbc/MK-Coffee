@@ -1,0 +1,69 @@
+/* ===== 顶部区域 ===== */
+.user-header { position: relative; padding-top: 40rpx; }
+.header-bg {
+  position: absolute; top: 0; left: 0; right: 0; height: 280rpx;
+  background: linear-gradient(160deg, #5c3d2e 0%, #7a5a47 60%, #e8873a 100%);
+}
+.user-card {
+  position: relative; z-index: 1;
+  margin: 0 28rpx; padding: 40rpx 32rpx;
+  background: #fff; border-radius: 16rpx;
+  box-shadow: 0 6rpx 24rpx rgba(92, 61, 46, 0.12);
+}
+
+/* 未登录 */
+.login-prompt { display: flex; flex-direction: column; align-items: center; }
+.login-text { font-size: 26rpx; color: #b0a59a; margin: 16rpx 0 24rpx; }
+.login-btn {
+  padding: 16rpx 64rpx;
+  background: linear-gradient(135deg, #5c3d2e, #7a5a47);
+  color: #fff; border-radius: 40rpx; font-size: 30rpx; font-weight: 700;
+}
+
+/* 已登录 */
+.user-info { display: flex; align-items: center; }
+.info-right { margin-left: 24rpx; }
+.nickname { font-size: 34rpx; font-weight: 800; color: #2c2416; }
+.phone { font-size: 24rpx; color: #b0a59a; margin-top: 6rpx; }
+
+/* 头像 */
+.avatar-placeholder {
+  width: 100rpx; height: 100rpx; border-radius: 50%;
+  background: #fefaf6; display: flex; align-items: center; justify-content: center;
+  font-size: 48rpx; flex-shrink: 0;
+}
+
+/* ===== 菜单 ===== */
+.menu-section { margin: 40rpx 28rpx 24rpx; background: #fff; border-radius: 16rpx; overflow: hidden; }
+.menu-item {
+  display: flex; align-items: center; padding: 28rpx;
+  border-bottom: 1rpx solid #fefaf6;
+}
+.menu-item:last-child { border-bottom: none; }
+.menu-icon-box {
+  width: 56rpx; height: 56rpx; border-radius: 12rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28rpx; margin-right: 16rpx;
+}
+.bg-orange { background: #fff8f2; }
+.bg-brown { background: #fefaf6; }
+.bg-green { background: #f0f9eb; }
+.menu-label { font-size: 28rpx; font-weight: 600; color: #2c2416; }
+.menu-desc { flex: 1; font-size: 24rpx; color: #b0a59a; margin-left: 12rpx; }
+.menu-arrow { font-size: 36rpx; color: #e0d5c9; }
+
+/* ===== 退出 ===== */
+.logout-section { padding: 40rpx 28rpx; }
+.logout-btn {
+  text-align: center; padding: 24rpx;
+  background: #fff; border-radius: 16rpx;
+  font-size: 28rpx; color: #e74c3c;
+}
+
+/* ===== 品牌信息 ===== */
+.brand-footer {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 60rpx 0 40rpx;
+}
+.brand-name { font-size: 24rpx; color: #b0a59a; }
+.brand-version { font-size: 20rpx; color: #d5cdc3; margin-top: 4rpx; }

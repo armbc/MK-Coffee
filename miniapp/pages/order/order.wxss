@@ -1,0 +1,71 @@
+/* ===== Tab ===== */
+.tab-bar { background: #fff; padding: 16rpx 0; border-bottom: 1rpx solid #f0ebe3; }
+.tab-bar-inner { white-space: nowrap; padding: 0 24rpx; }
+.tab-item {
+  display: inline-block; padding: 10rpx 24rpx; margin-right: 12rpx;
+  font-size: 26rpx; color: #8c7b6e; background: #fefaf6; border-radius: 32rpx;
+}
+.tab-item.active { color: #fff; background: linear-gradient(135deg, #5c3d2e, #7a5a47); }
+
+/* ===== 订单卡片 ===== */
+.order-card {
+  margin: 16rpx 24rpx; background: #fff; border-radius: 16rpx;
+  overflow: hidden; box-shadow: 0 2rpx 12rpx rgba(92, 61, 46, 0.04);
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20rpx 24rpx; border-bottom: 1rpx solid #fefaf6;
+}
+.card-no { font-size: 24rpx; color: #b0a59a; }
+.card-status { font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 20rpx; }
+.card-body { padding: 20rpx 24rpx; }
+.card-info { display: flex; justify-content: space-between; align-items: center; }
+.card-count { font-size: 26rpx; color: #8c7b6e; }
+.card-total { font-size: 34rpx; font-weight: 800; color: #e8873a; }
+.card-time { font-size: 22rpx; color: #b0a59a; margin-top: 8rpx; }
+.card-actions { display: flex; justify-content: flex-end; gap: 16rpx; padding: 0 24rpx 20rpx; }
+.card-btn { padding: 10rpx 32rpx; border-radius: 28rpx; font-size: 24rpx; border: 1rpx solid; }
+.card-btn.cancel { color: #b0a59a; border-color: #e0d5c9; }
+.card-btn.pay { color: #fff; background: linear-gradient(135deg, #e8873a, #f0a060); border-color: transparent; }
+
+/* ===== 详情 ===== */
+.detail-header { padding: 32rpx 28rpx 20rpx; background: #fff; }
+.detail-status { display: inline-block; font-size: 26rpx; padding: 6rpx 20rpx; border-radius: 20rpx; margin-bottom: 12rpx; }
+.detail-no { font-size: 24rpx; color: #b0a59a; }
+
+.detail-items { margin: 16rpx 24rpx; background: #fff; border-radius: 16rpx; overflow: hidden; }
+.detail-item {
+  display: flex; align-items: center; padding: 20rpx;
+  border-bottom: 1rpx solid #fefaf6;
+}
+.detail-item:last-child { border-bottom: none; }
+.di-img {
+  width: 100rpx; height: 100rpx; background: linear-gradient(135deg, #fefaf6, #f5ebe0);
+  border-radius: 12rpx; display: flex; align-items: center; justify-content: center;
+  margin-right: 16rpx; flex-shrink: 0;
+}
+.di-img .img-icon { font-size: 40rpx; opacity: 0.5; }
+.di-info { flex: 1; min-width: 0; }
+.di-name { font-size: 28rpx; font-weight: 700; color: #2c2416; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.di-spec { font-size: 22rpx; color: #b0a59a; margin-top: 4rpx; }
+.di-price { font-size: 24rpx; color: #8c7b6e; margin-top: 6rpx; }
+.di-subtotal { font-size: 28rpx; font-weight: 800; color: #e8873a; flex-shrink: 0; }
+
+.detail-summary { padding: 20rpx 28rpx; background: #fff; margin: 0 24rpx 16rpx; border-radius: 0 0 16rpx 16rpx; }
+.detail-total { display: flex; justify-content: flex-end; align-items: center; gap: 12rpx; font-size: 28rpx; color: #2c2416; }
+.total-amount { font-size: 36rpx; font-weight: 800; color: #e8873a; }
+.detail-time { padding-top: 8rpx; font-size: 24rpx; color: #b0a59a; text-align: right; }
+
+.detail-actions { padding: 32rpx 28rpx; display: flex; gap: 16rpx; }
+.detail-actions .btn-outline {
+  flex: 1; text-align: center; padding: 20rpx 0;
+  background: #fefaf6; color: #5c3d2e; border-radius: 40rpx; font-size: 28rpx; font-weight: 600;
+}
+.detail-actions .btn-pay {
+  flex: 1; text-align: center; padding: 20rpx 0;
+  background: linear-gradient(135deg, #e8873a, #f0a060); color: #fff; border-radius: 40rpx; font-size: 28rpx; font-weight: 700;
+}
+.detail-actions .btn-cancel {
+  flex: 1; text-align: center; padding: 20rpx 0;
+  background: #fff; color: #b0a59a; border: 1rpx solid #e0d5c9; border-radius: 40rpx; font-size: 28rpx;
+}

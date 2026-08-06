@@ -1,0 +1,66 @@
+<view class="page-body" style="max-width: {{maxWidth > 0 ? maxWidth + 'px' : 'none'}}; margin: {{maxWidth > 0 ? '0 auto' : '0'}};">
+  <view class="container" wx:if="{{product}}">
+    <!-- 商品大图 -->
+    <view class="product-image" style="height: {{imageHeight}}rpx;">
+      <text class="product-img-icon">☕</text>
+    </view>
+
+    <!-- 基本信息 -->
+    <view class="info-card">
+      <view class="product-name">{{product.name}}</view>
+      <view class="product-cat">{{product.category_name}}</view>
+      <view class="product-price-row">
+        <view class="price-left">
+          <text class="product-price">¥{{currentPrice}}</text>
+          <text class="product-stock" wx:if="{{product.stock > 0}}">库存 {{product.stock}}</text>
+          <text class="product-stock out" wx:else>已售罄</text>
+        </view>
+      </view>
+
+      <view class="product-desc" wx:if="{{product.description}}">
+        <view class="desc-label">☕ 商品描述</view>
+        <view class="desc-text">{{product.description}}</view>
+      </view>
+    </view>
+
+    <!-- 规格选择 -->
+    <view class="section-card" wx:if="{{specs.length > 0}}">
+      <view class="section-title">选择规格</view>
+      <view class="spec-list">
+        <view class="spec-item {{selectedSpec === index ? 'active' : ''}}"
+              wx:for="{{specs}}" wx:key="id"
+              data-index="{{index}}" bindtap="onSpecTap">
+          <text class="spec-name">{{item.name}}</text>
+          <text class="spec-price">¥{{item.price}}</text>
+          <text class="spec-stock">库存 {{item.stock}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 数量选择 -->
+    <view class="section-card qty-card">
+      <view class="section-title">购买数量</view>
+      <view class="quantity-control">
+        <view class="qty-btn" bindtap="onQuantityMinus">−</view>
+        <view class="qty-value">{{quantity}}</view>
+        <view class="qty-btn" bindtap="onQuantityPlus">+</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="empty-state">
+    <view class="empty-icon">☕</view>
+    <view class="empty-text">加载中...</view>
+  </view>
+</view>
+
+<!-- 底部操作栏 -->
+<view class="bottom-bar safe-bottom" wx:if="{{product}}">
+  <view class="bottom-price">
+    <text class="price-label">合计</text>
+    <text class="price-total">¥{{totalPrice}}</text>
+  </view>
+  <view class="btn-add-cart" bindtap="addToCart">
+    <text>加入购物车</text>
+  </view>
+</view>

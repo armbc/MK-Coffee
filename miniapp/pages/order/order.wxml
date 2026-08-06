@@ -1,0 +1,64 @@
+<!-- ===== 订单详情 ===== -->
+<view wx:if="{{detailOrder}}" class="page-body" style="max-width: {{maxWidth > 0 ? maxWidth + 'px' : 'none'}}; margin: {{maxWidth > 0 ? '0 auto' : '0'}};" bindtouchstart="onSwipeStart" bindtouchend="onSwipeEnd">
+  <view class="detail-header">
+    <view class="detail-status" style="color:{{detailOrder.status_info.color}};background:{{detailOrder.status_info.bg}}">{{detailOrder.status_info.text}}</view>
+    <view class="detail-no">订单号：{{detailOrder.order_no}}</view>
+  </view>
+  <view class="detail-items">
+    <view class="detail-item" wx:for="{{detailOrder.items}}" wx:key="id">
+      <view class="di-img"><text class="img-icon">☕</text></view>
+      <view class="di-info">
+        <view class="di-name">{{item.product_name}}</view>
+        <view class="di-spec" wx:if="{{item.spec_name}}">{{item.spec_name}}</view>
+        <view class="di-price">¥{{item.price_text}} × {{item.quantity}}</view>
+      </view>
+      <view class="di-subtotal">¥{{item.subtotal_text}}</view>
+    </view>
+  </view>
+  <view class="detail-summary">
+    <view class="detail-total"><text>合计</text><text class="total-amount">¥{{detailOrder.total_text}}</text></view>
+    <view class="detail-time">下单时间：{{detailOrder.created_at}}</view>
+  </view>
+  <view class="detail-actions">
+    <view class="btn-outline" bindtap="backToList">返回列表</view>
+    <view class="btn-pay" wx:if="{{detailOrder.status === 'pending'}}" data-id="{{detailOrder.id}}" bindtap="onPay">去支付</view>
+    <view class="btn-cancel" wx:if="{{detailOrder.status === 'pending'}}" data-id="{{detailOrder.id}}" bindtap="onCancel">取消订单</view>
+  </view>
+</view>
+
+<!-- ===== 订单列表 ===== -->
+<view wx:else>
+  <scroll-view class="tab-bar" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tab-bar-inner">
+      <view class="tab-item {{activeTab === index ? 'active' : ''}}"
+            wx:for="{{tabs}}" wx:key="key"
+            data-index="{{index}}" bindtap="onTabTap">{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="page-body" style="max-width: {{maxWidth > 0 ? maxWidth + 'px' : 'none'}}; margin: {{maxWidth > 0 ? '0 auto' : '0'}};" bindtouchstart="onSwipeStart" bindtouchend="onSwipeEnd">
+    <view wx:if="{{!loading && filteredOrders.length > 0}}">
+      <view class="order-card" wx:for="{{filteredOrders}}" wx:key="id">
+        <view class="card-header" bindtap="onDetail" data-id="{{item.id}}">
+          <view class="card-no">订单号：{{item.order_no}}</view>
+          <view class="card-status" style="color:{{item.status_info.color}};background:{{item.status_info.bg}}">{{item.status_info.text}}</view>
+        </view>
+        <view class="card-body" bindtap="onDetail" data-id="{{item.id}}">
+          <view class="card-info">
+            <text class="card-count">共 {{item.item_count}} 件商品</text>
+            <text class="card-total">¥{{item.total_text}}</text>
+          </view>
+          <view class="card-time">{{item.created_at}}</view>
+        </view>
+        <view class="card-actions" wx:if="{{item.status === 'pending'}}">
+          <view class="card-btn cancel" data-id="{{item.id}}" bindtap="onCancel">取消</view>
+          <view class="card-btn pay" data-id="{{item.id}}" bindtap="onPay">去支付</view>
+        </view>
+      </view>
+    </view>
+    <view wx:elif="{{!loading && filteredOrders.length === 0}}" class="empty-state">
+      <view class="empty-icon">📋</view>
+      <view class="empty-text">暂无订单</view>
+    </view>
+  </view>
+</view>

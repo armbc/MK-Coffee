@@ -1,0 +1,52 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/product/product",
+    "pages/cart/cart",
+    "pages/order/order",
+    "pages/user/user",
+    "pages/store/store",
+    "pages/coupons/coupons",
+    "pages/addresses/addresses"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#3d2b1f",
+    "navigationBarTitleText": "迈科咖啡",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f0eb"
+  },
+  "tabBar": {
+    "color": "#8c7b6e",
+    "selectedColor": "#3d2b1f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab-home.png",
+        "selectedIconPath": "images/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/cart/cart",
+        "text": "购物车",
+        "iconPath": "images/tab-cart.png",
+        "selectedIconPath": "images/tab-cart-active.png"
+      },
+      {
+        "pagePath": "pages/order/order",
+        "text": "订单",
+        "iconPath": "images/tab-order.png",
+        "selectedIconPath": "images/tab-order-active.png"
+      },
+      {
+        "pagePath": "pages/user/user",
+        "text": "我的",
+        "iconPath": "images/tab-user.png",
+        "selectedIconPath": "images/tab-user-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

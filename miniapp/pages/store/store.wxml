@@ -1,0 +1,36 @@
+<view class="store-page">
+  <!-- 地图 -->
+  <map class="store-map"
+       latitude="{{latitude}}" longitude="{{longitude}}"
+       markers="{{markers}}" scale="15"
+       show-location="{{true}}">
+  </map>
+
+  <!-- 门店信息 -->
+  <view class="store-info">
+    <view class="store-name">{{store.name}}</view>
+    <view class="info-row">
+      <text class="info-icon">📍</text>
+      <text class="info-text">{{store.address}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-icon">📞</text>
+      <text class="info-text">{{store.phone}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-icon">🕐</text>
+      <text class="info-text">{{store.hours}}</text>
+    </view>
+
+    <view class="store-actions">
+      <view class="action-btn call" bindtap="onCall">
+        <text>📞</text>
+        <text>拨打电话</text>
+      </view>
+      <view class="action-btn nav" bindtap="onNavigate">
+        <text>🧭</text>
+        <text>导航到店</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,60 @@
+<view class="addr-page">
+  <!-- 地址列表 -->
+  <view wx:if="{{!editing}}">
+    <view wx:if="{{addresses.length > 0}}">
+      <view class="addr-card" wx:for="{{addresses}}" wx:key="id">
+        <view class="addr-header">
+          <view class="addr-contact">
+            <text class="addr-name">{{item.name}}</text>
+            <text class="addr-phone">{{item.phone}}</text>
+          </view>
+          <text class="addr-default" wx:if="{{item.is_default}}">默认</text>
+        </view>
+        <view class="addr-detail">{{item.province}} {{item.city}} {{item.district}} {{item.detail}}</view>
+        <view class="addr-actions">
+          <text data-id="{{item.id}}" bindtap="onEdit">编辑</text>
+          <text data-id="{{item.id}}" bindtap="onDelete">删除</text>
+          <text wx:if="{{!item.is_default}}" data-id="{{item.id}}" bindtap="onSetDefault">设为默认</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">📍</view>
+      <view class="empty-text">还没有收货地址</view>
+    </view>
+    <view class="add-btn" bindtap="onAdd">+ 添加新地址</view>
+  </view>
+
+  <!-- 编辑表单 -->
+  <view wx:if="{{editing}}" class="addr-form">
+    <view class="form-title">{{editId ? '编辑地址' : '新增地址'}}</view>
+    <view class="form-group">
+      <text class="form-label">收货人</text>
+      <input class="form-input" placeholder="请输入姓名" value="{{form.name}}" data-field="name" bindinput="onInput"/>
+    </view>
+    <view class="form-group">
+      <text class="form-label">手机号</text>
+      <input class="form-input" placeholder="请输入手机号" type="number" value="{{form.phone}}" data-field="phone" bindinput="onInput"/>
+    </view>
+    <view class="form-group">
+      <text class="form-label">省</text>
+      <input class="form-input" placeholder="江苏省" value="{{form.province}}" data-field="province" bindinput="onInput"/>
+    </view>
+    <view class="form-group">
+      <text class="form-label">市</text>
+      <input class="form-input" placeholder="苏州市" value="{{form.city}}" data-field="city" bindinput="onInput"/>
+    </view>
+    <view class="form-group">
+      <text class="form-label">区</text>
+      <input class="form-input" placeholder="工业园区" value="{{form.district}}" data-field="district" bindinput="onInput"/>
+    </view>
+    <view class="form-group">
+      <text class="form-label">详细地址</text>
+      <input class="form-input" placeholder="街道、门牌号等" value="{{form.detail}}" data-field="detail" bindinput="onInput"/>
+    </view>
+    <view class="form-actions">
+      <view class="btn-cancel" bindtap="onCancel">取消</view>
+      <view class="btn-save" bindtap="onSave">保存</view>
+    </view>
+  </view>
+</view>

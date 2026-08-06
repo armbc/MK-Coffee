@@ -1,0 +1,99 @@
+/* ==========================================
+   迈科咖啡 · 全局样式 (年轻化 v2)
+   ========================================== */
+
+/* ---- 设计 Token ---- */
+page {
+  --color-primary: #5c3d2e;
+  --color-primary-light: #7a5a47;
+  --color-accent: #e8873a;
+  --color-accent-light: #f0a060;
+  --color-bg: #fefaf6;
+  --color-bg-card: #ffffff;
+  --color-text: #2c2416;
+  --color-text-secondary: #8c7b6e;
+  --color-text-muted: #b0a59a;
+  --color-border: #f0ebe3;
+  --color-success: #4caf50;
+  --color-danger: #e74c3c;
+  --color-warning: #f39c12;
+
+  --radius-sm: 8rpx;
+  --radius: 12rpx;
+  --radius-lg: 16rpx;
+  --radius-xl: 24rpx;
+
+  --shadow-sm: 0 2rpx 8rpx rgba(92, 61, 46, 0.06);
+  --shadow: 0 4rpx 16rpx rgba(92, 61, 46, 0.08);
+  --shadow-lg: 0 8rpx 32rpx rgba(92, 61, 46, 0.12);
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif;
+  font-size: 28rpx;
+  color: #2c2416;
+  background-color: #fefaf6;
+  line-height: 1.6;
+}
+
+/* ---- 通用容器 ---- */
+.container {
+  padding: 24rpx;
+}
+.container-centered {
+  padding: 24rpx;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ---- 安全区 ---- */
+.safe-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---- 通用卡片 ---- */
+.card {
+  background: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(92, 61, 46, 0.06);
+}
+
+/* ---- 通用按钮 ---- */
+.btn-primary {
+  background: linear-gradient(135deg, #5c3d2e, #7a5a47);
+  color: #fff;
+  border-radius: 40rpx;
+  border: none;
+  font-weight: 600;
+}
+.btn-accent {
+  background: linear-gradient(135deg, #e8873a, #f0a060);
+  color: #fff;
+  border-radius: 40rpx;
+  border: none;
+  font-weight: 600;
+}
+.btn-outline {
+  background: transparent;
+  color: #5c3d2e;
+  border: 2rpx solid #e0d5c9;
+  border-radius: 40rpx;
+  font-weight: 600;
+}
+
+/* ---- 空状态 ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 160rpx 0;
+}
+.empty-icon {
+  font-size: 80rpx;
+  opacity: 0.6;
+}
+.empty-text {
+  font-size: 28rpx;
+  color: #b0a59a;
+  margin-top: 16rpx;
+}

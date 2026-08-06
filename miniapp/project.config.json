@@ -1,0 +1,16 @@
+{
+  "description": "迈科咖啡微信小程序",
+  "projectname": "mk-coffee",
+  "miniprogramRoot": "./",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true,
+    "autoAudits": false,
+    "checkInvalidKey": true
+  },
+  "libVersion": "2.18.0",
+  "condition": {}
+}

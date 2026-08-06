@@ -1,0 +1,45 @@
+<view class="page-body cart-page" style="max-width: {{maxWidth > 0 ? maxWidth + 'px' : 'none'}}; margin: {{maxWidth > 0 ? '0 auto' : '0'}};" bindtouchstart="onSwipeStart" bindtouchend="onSwipeEnd">
+  <view wx:if="{{!loading && items.length > 0}}">
+    <view class="cart-item" wx:for="{{items}}" wx:key="id">
+      <view class="check-wrap" data-id="{{item.id}}" bindtap="onToggleSelect">
+        <view class="checkbox {{item.isSelected ? 'checked' : ''}}">
+          <text wx:if="{{item.isSelected}}">✓</text>
+        </view>
+      </view>
+      <view class="item-img"><text class="img-icon">☕</text></view>
+      <view class="item-info">
+        <view class="item-name">{{item.product_name}}</view>
+        <view class="item-spec" wx:if="{{item.spec_name}}">{{item.spec_name}}</view>
+        <view class="item-price">¥{{item.unit_price_text}}</view>
+      </view>
+      <view class="item-qty">
+        <view class="qty-btn" data-id="{{item.id}}" data-delta="-1" bindtap="onQuantityChange">−</view>
+        <view class="qty-value">{{item.quantity}}</view>
+        <view class="qty-btn" data-id="{{item.id}}" data-delta="1" bindtap="onQuantityChange">+</view>
+      </view>
+      <view class="item-right">
+        <view class="item-subtotal">¥{{item.subtotal_text}}</view>
+        <view class="item-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading && items.length === 0}}" class="empty-state">
+    <view class="empty-icon">🛒</view>
+    <view class="empty-text">购物车是空的</view>
+    <view class="empty-link" bindtap="goShop">去逛逛</view>
+  </view>
+</view>
+
+<!-- 底部结算栏 -->
+<view class="bottom-bar safe-bottom" wx:if="{{items.length > 0}}">
+  <view class="bottom-check" bindtap="onToggleAll">
+    <view class="checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view>
+    <text class="all-label">全选</text>
+  </view>
+  <view class="bottom-total">
+    <text class="total-label">合计：</text>
+    <text class="total-price">¥{{total}}</text>
+  </view>
+  <view class="btn-submit {{total <= 0 ? 'disabled' : ''}}" bindtap="createOrder">下单</view>
+</view>

@@ -73,10 +73,14 @@ DATABASES = {
         "OPTIONS": {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            "unix_socket": os.getenv("DB_SOCKET", "/home/mbc/MySQL8/run/mysql.sock"),
         },
     }
 }
+
+# -- Docker 环境下不需要 unix socket，仅在宿主机直连时启用 --
+_db_socket = os.getenv("DB_SOCKET")
+if _db_socket:
+    DATABASES["default"]["OPTIONS"]["unix_socket"] = _db_socket
 
 # ========== 密码验证 ==========
 AUTH_PASSWORD_VALIDATORS = [

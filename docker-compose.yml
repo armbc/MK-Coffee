@@ -1,0 +1,65 @@
+# ============================================================
+# 迈科咖啡 · Docker Compose 编排
+# 启动：   docker compose up -d
+# 查看：   docker compose logs -f
+# 停止：   docker compose down
+# ============================================================
+
+services:
+  # ---- MySQL 8.0 ----
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${DB_NAME:-mkcoffee}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Django + Gunicorn ----
+  backend:
+    build: .
+    env_file:
+      - backend/.env
+    environment:
+      - DB_HOST=db
+      - DB_SOCKET=
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static_volume:/app/staticfiles
+    restart: unless-stopped
+
+  # ---- Nginx 反向代理 ----
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      # 443 端口在证书申请后启用：
+      # 1. 运行 certbot 获取证书
+      # 2. 将 default-ssl.conf.example 改名为 default-ssl.conf
+      # 3. 取消下面一行的注释：
+      # - "443:443"
+    volumes:
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/static:ro
+      - certbot_www:/var/www/certbot:ro
+      # 证书申请后启用：
+      # - certbot_conf:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  static_volume:
+  certbot_www:
+  certbot_conf:

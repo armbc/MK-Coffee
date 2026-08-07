@@ -6,4 +6,5 @@ djangorestframework-simplejwt==5.3.1
 requests==2.32.3
 django-filter==24.3
 python-dotenv==1.0.1
+gunicorn==23.0.0
 cryptography==50.0.0

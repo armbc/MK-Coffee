@@ -53,7 +53,7 @@ App({
     token: '',
     refresh: '',
     userInfo: null,
-    apiBase: 'http://100.96.190.122:8000/api',
+    apiBase: 'https://api.mk-coffee.com/api',
     device: null,
   },
 

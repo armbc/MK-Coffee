@@ -31,8 +31,13 @@ Thumbs.db
 # Environment
 .env
 .env.*
+!.env.example
 
 # Database
 *.sqlite3
 db.sqlite3
 .codewhale/
+
+# Internal planning docs (keep local only)
+PLAN.md
+YourWorkNow.md

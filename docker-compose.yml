@@ -43,17 +43,12 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
-      # 443 端口在证书申请后启用：
-      # 1. 运行 certbot 获取证书
-      # 2. 将 default-ssl.conf.example 改名为 default-ssl.conf
-      # 3. 取消下面一行的注释：
-      # - "443:443"
+      - "443:443"
     volumes:
       - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
       - static_volume:/static:ro
       - certbot_www:/var/www/certbot:ro
-      # 证书申请后启用：
-      # - certbot_conf:/etc/letsencrypt:ro
+      - certbot_conf:/etc/letsencrypt:ro
     depends_on:
       - backend
     restart: unless-stopped

@@ -43,14 +43,12 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
-      # 证书申请后取消下行注释：
-      # - "443:443"
+      - "443:443"
     volumes:
       - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
       - static_volume:/static:ro
       - certbot_www:/var/www/certbot:ro
-      # 证书申请后取消下行注释：
-      # - certbot_conf:/etc/letsencrypt:ro
+      - certbot_conf:/etc/letsencrypt:ro
     depends_on:
       - backend
     restart: unless-stopped

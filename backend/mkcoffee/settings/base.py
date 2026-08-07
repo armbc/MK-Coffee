@@ -82,6 +82,16 @@ _db_socket = os.getenv("DB_SOCKET")
 if _db_socket:
     DATABASES["default"]["OPTIONS"]["unix_socket"] = _db_socket
 
+# -- 修复非 ASCII 数据库密码（PyMySQL MySQL 8.0 SHA2 认证兼容） --
+# 传 bytes 而非 str，避免 PyMySQL 内部 latin-1 编码失败
+if "PASSWORD" in DATABASES["default"]:
+    _pwd = DATABASES["default"]["PASSWORD"]
+    if isinstance(_pwd, str):
+        try:
+            _pwd.encode("latin-1")
+        except UnicodeEncodeError:
+            DATABASES["default"]["PASSWORD"] = _pwd.encode()
+
 # ========== 密码验证 ==========
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

@@ -18,9 +18,13 @@ echo "📂 收集静态文件..."
 python manage.py collectstatic --noinput
 
 echo "🚀 启动 Gunicorn..."
-exec gunicorn mkcoffee.wsgi:application \
+
+# -- 确保 staticfiles 目录权限正确（Docker volume 初始为 root） --
+chown -R appuser:appuser /app/staticfiles 2>/dev/null || true
+
+exec su -s /bin/bash appuser -c "gunicorn mkcoffee.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers 4 \
     --access-logfile - \
     --error-logfile - \
-    --log-level info
+    --log-level info"

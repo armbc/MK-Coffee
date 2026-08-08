@@ -38,7 +38,16 @@ Page({
     if (opts.id) this.fetchDetail(opts.id)
   },
 
-  onShow() { if (!this.data.detailOrder) this.fetchOrders() },
+  onShow() {
+    // 从购物车下单后自动打开订单详情
+    const newOrderId = app.globalData.newOrderId
+    if (newOrderId && !this.data.detailOrder) {
+      app.globalData.newOrderId = null
+      this.fetchDetail(newOrderId)
+      return
+    }
+    if (!this.data.detailOrder) this.fetchOrders()
+  },
 
   fetchOrders() {
     const token = wx.getStorageSync('token') || app.globalData.token
@@ -100,16 +109,39 @@ Page({
 
   onPay(e) {
     const id = e.currentTarget.dataset.id
+    const order = this.data.orders.find(o => o.id === id) || {}
+    const amount = order.total_text || '0.00'
+
     wx.showModal({
-      title: '确认支付', content: '模拟支付，确认后将标记为已支付',
+      title: '确认支付',
+      content: `订单金额 ¥${amount}，确认支付？`,
       success: (res) => {
-        if (res.confirm) {
-          api.post(`/orders/${id}/pay/`).then(() => {
+        if (!res.confirm) return
+
+        api.post(`/orders/${id}/pay/`).then(data => {
+          // data = { method: "mock"|"wechat_jsapi", pay_params?: {...}, order?: {...} }
+          if (data.method === 'mock') {
             wx.showToast({ title: '支付成功', icon: 'success' })
             this.fetchOrders()
-          })
-            .catch(() => {})
-        }
+          } else if (data.method === 'wechat_jsapi') {
+            wx.requestPayment({
+              ...data.pay_params,
+              success: () => {
+                wx.showToast({ title: '支付成功', icon: 'success' })
+                this.fetchOrders()
+              },
+              fail: (err) => {
+                if (err.errMsg.includes('cancel')) {
+                  wx.showToast({ title: '已取消支付', icon: 'none' })
+                } else {
+                  wx.showToast({ title: '支付失败，请重试', icon: 'none' })
+                }
+              },
+            })
+          }
+        }).catch(() => {
+          wx.showToast({ title: '支付请求失败', icon: 'none' })
+        })
       },
     })
   },

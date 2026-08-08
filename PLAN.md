@@ -263,3 +263,14 @@ addresses      — 收货地址（user_id, name, phone, province, city, district
 - **服务器**：腾讯云上海 2核2G（腾服），IP `124.220.108.118`，Docker 三服务运行中
 - **HTTPS**：Let's Encrypt 证书已申请，`https://api.mk-coffee.com/api/` 正常
 - **下一步**：微信小程序后台域名白名单 ← 真机测试 ← 提交审核
+
+### 2026-08-08 · 微信支付 V3 集成
+
+- **新增**：`backend/payments/` 支付模块（PaymentRecord 模型、WXPayClient、统一下单、回调解密、签名验证）
+- **架构**：有商户凭证走真实 JSAPI 支付，无凭证自动降级为模拟支付
+- **新增 API**：`POST /api/payments/callback/` 微信支付回调通知
+- **修改 API**：`POST /api/orders/{id}/pay/` 返回 `{method, pay_params?}` 自适应格式
+- **小程序适配**：order.js onPay 支持 mock / wechat_jsapi 双路径；cart.js 下单后自动打开订单详情
+- **配置**：`backend/.env` 新增 WXPAY_* 环境变量（全可选，空则降级模拟支付）
+- **测试**：全部 66/66 通过（含 payments 迁移）
+- **下一步**：备案通过 + 商户号到手后填入 WXPAY_* 即可启用真实支付

@@ -10,8 +10,10 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?err}
       MYSQL_DATABASE: ${DB_NAME:-mkcoffee}
+      MYSQL_USER: ${DB_USER:-mkcoffee}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?err}
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -22,6 +24,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ---- Django + Gunicorn ----
   backend:
@@ -37,6 +51,21 @@ services:
     volumes:
       - static_volume:/app/staticfiles
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ---- Nginx 反向代理 ----
   nginx:
@@ -52,6 +81,22 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   mysql_data:

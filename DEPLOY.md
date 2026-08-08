@@ -1,7 +1,7 @@
 # 腾服部署说明
 
 > 迈科咖啡微信小程序 · 腾讯云服务器部署文档  
-> 最后更新：2026-08-07
+> 最后更新：2026-08-08
 
 ---
 
@@ -55,13 +55,17 @@ cd MK-Coffee
 cp backend/.env.example backend/.env
 vim backend/.env   # 填入 SECRET_KEY / DB_PASSWORD / WX_APP_SECRET 等
 
-# 3. 创建根目录 .env（docker compose 解析 ${DB_PASSWORD} 用）
-grep DB_PASSWORD backend/.env > .env
+# 3. 创建根目录 .env（docker compose 解析 ${DB_ROOT_PASSWORD} 等用）
+cp .env.example .env
+vim .env           # 填入 DB_ROOT_PASSWORD / DB_USER / DB_PASSWORD
 
-# 4. 停掉宝塔自带 httpd（如占用 80 端口）
-sudo kill $(pgrep httpd)
+# 4. 服务器安全加固（首次部署后执行一次）
+sudo bash deploy/harden-server.sh
 
-# 5. 启动
+# 5. 腾服可能预装宝塔等组件，清理占用 80 端口的进程
+sudo fuser -k 80/tcp 2>/dev/null || true
+
+# 6. 启动
 docker compose up -d --build
 ```
 
@@ -167,3 +171,44 @@ docker compose down && docker compose up -d
 ```bash
 docker compose exec db mysqldump -u root -p"$DB_PASSWORD" mkcoffee > backup.sql
 ```
+
+---
+
+## 安全加固
+
+服务器安全由 `deploy/harden-server.sh` 一键完成。首次部署后执行：
+
+```bash
+sudo bash deploy/harden-server.sh
+```
+
+加固内容包括：
+
+| 层面 | 措施 |
+|------|------|
+| SSH | 禁用 root 登录、密码认证（仅密钥）、MaxAuthTries=3 |
+| fail2ban | SSH 3 次失败封禁 2 小时 |
+| UFW 防火墙 | 仅开放 22/80/443，其余全部拒绝 |
+| 自动更新 | unattended-upgrades 每日自动安装安全补丁 |
+| 内核参数 | TCP syncookies、禁用 ICMP 重定向、RP 过滤 |
+
+### Docker 容器安全（docker-compose.yml 内置）
+
+| 措施 | 说明 |
+|------|------|
+| `no-new-privileges` | 禁止容器内提权 |
+| `read_only: true` | backend + nginx 只读根文件系统 |
+| 资源限制 | 每容器 CPU/内存上限 |
+| 日志轮转 | json-file 驱动，10MB × 3 文件 |
+| MySQL 端口 | 仅绑定 127.0.0.1，不对外暴露 |
+| 应用用户 | Gunicorn 以 appuser 运行，非 root |
+
+### Django 安全（production.py）
+
+| 措施 | 说明 |
+|------|------|
+| DEBUG=False | 禁止错误页面泄露 |
+| HSTS | max-age=2 年，含子域 |
+| Secure Cookie | 仅 HTTPS 传输 |
+| XSS/Content-Type 防护 | 浏览器安全头 |
+| 日志 | 生产环境 WARNING 级别 |

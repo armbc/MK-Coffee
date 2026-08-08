@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "products",
     "orders",
     "coupons",
+    "payments",
 ]
 
 # ========== 中间件 ==========
@@ -152,3 +153,13 @@ CORS_ALLOW_CREDENTIALS = True
 WX_APP_ID = os.getenv("WX_APP_ID", "")
 WX_APP_SECRET = os.getenv("WX_APP_SECRET", "")
 AUTH_USER_MODEL = "users.User"
+
+# ========== 微信支付 V3 配置 ==========
+# 以下全部可选 —— 未配置时自动降级为模拟支付
+WXPAY_ENABLED = os.getenv("WXPAY_ENABLED", "false").lower() == "true"
+WXPAY_MCH_ID = os.getenv("WXPAY_MCH_ID", "")
+WXPAY_API_V3_KEY = os.getenv("WXPAY_API_V3_KEY", "")
+WXPAY_SERIAL_NO = os.getenv("WXPAY_SERIAL_NO", "")
+WXPAY_PRIVATE_KEY = os.getenv("WXPAY_PRIVATE_KEY", "")
+WXPAY_NOTIFY_URL = os.getenv("WXPAY_NOTIFY_URL", "")
+WXPAY_CERT_PATH = os.getenv("WXPAY_CERT_PATH", "")

@@ -6,6 +6,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from payments.models import PaymentRecord
+from payments.wxpay import get_wxpay_client
 from .models import CartItem, Order, OrderItem
 from .serializers import (
     CartItemSerializer,
@@ -251,7 +253,12 @@ class OrderViewSet(
 
     @action(detail=True, methods=["post"], url_path="pay")
     def pay(self, request, pk=None):
-        """模拟支付（微信支付接入前的占位实现）"""
+        """
+        统一支付入口
+
+        - 微信支付已配置 → 统一下单，返回小程序支付参数
+        - 微信支付未配置 → 模拟支付
+        """
         order = self.get_object()
 
         if order.status != "pending":
@@ -260,11 +267,67 @@ class OrderViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        order.status = "paid"
-        order.save(update_fields=["status", "updated_at"])
+        wxpay = get_wxpay_client()
 
-        return Response({
-            "code": 0,
-            "data": OrderDetailSerializer(order).data,
-            "msg": "支付成功",
-        })
+        if wxpay:
+            # ---- 真实微信支付 ----
+            amount_fen = int(order.total * 100)
+            description = f"迈科咖啡-{order.order_no[:8]}"
+
+            try:
+                result = wxpay.jsapi_order(
+                    out_trade_no=order.order_no,
+                    amount=amount_fen,
+                    payer_openid=request.user.openid,
+                    description=description,
+                )
+            except Exception as e:
+                return Response(
+                    {"code": 500, "data": None, "msg": f"微信支付下单失败: {e}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            prepay_id = result.get("prepay_id", "")
+
+            # 记录支付流水
+            PaymentRecord.objects.create(
+                order=order,
+                user=request.user,
+                method="wechat_jsapi",
+                amount=order.total,
+                prepay_id=prepay_id,
+            )
+
+            # 返回小程序调起支付所需参数
+            pay_params = wxpay.sign_miniapp_params(prepay_id)
+
+            return Response({
+                "code": 0,
+                "data": {
+                    "method": "wechat_jsapi",
+                    "pay_params": pay_params,
+                },
+                "msg": "ok",
+            })
+
+        else:
+            # ---- 模拟支付 ----
+            order.status = "paid"
+            order.save(update_fields=["status", "updated_at"])
+
+            PaymentRecord.objects.create(
+                order=order,
+                user=request.user,
+                method="mock",
+                status="paid",
+                amount=order.total,
+            )
+
+            return Response({
+                "code": 0,
+                "data": {
+                    "method": "mock",
+                    "order": OrderDetailSerializer(order).data,
+                },
+                "msg": "支付成功（模拟）",
+            })

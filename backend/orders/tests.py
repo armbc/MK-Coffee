@@ -380,7 +380,9 @@ class OrderAPITest(TestCase):
         url = reverse("order-pay", args=[order_id])
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["data"]["status"], "paid")
+        data = resp.json()["data"]
+        self.assertEqual(data["method"], "mock")
+        self.assertEqual(data["order"]["status"], "paid")
 
     def test_cannot_pay_non_pending(self):
         self._fill_cart()

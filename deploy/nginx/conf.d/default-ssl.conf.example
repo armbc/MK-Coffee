@@ -13,7 +13,7 @@ limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
 # ---- HTTP → HTTPS 重定向 ----
 server {
     listen 80;
-    server_name api.mk-coffee.com;
+    server_name api.mk-coffee.cn api.mk-coffee.com;
     server_tokens off;
 
     location ^~ /.well-known/acme-challenge/ {
@@ -28,7 +28,7 @@ server {
 # ---- HTTPS 主站 ----
 server {
     listen 443 ssl http2;
-    server_name api.mk-coffee.com;
+    server_name api.mk-coffee.cn api.mk-coffee.com;
     server_tokens off;
 
     ssl_certificate     /etc/letsencrypt/live/api.mk-coffee.com/fullchain.pem;

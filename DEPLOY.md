@@ -16,7 +16,7 @@
 | 带宽 | 200Mbps 峰值，无限流量 |
 | 地域 | 上海 |
 | IP | `124.220.108.118` |
-| 域名 | `api.mk-coffee.com`（A 记录解析到上述 IP） |
+| 域名 | `api.mk-coffee.cn`（主域，A 记录解析到上述 IP），`api.mk-coffee.com`（别名，同一证书覆盖） |
 | SSH | `ssh ubuntu@124.220.108.118`（已配个人云免密） |
 
 ---

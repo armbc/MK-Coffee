@@ -1,7 +1,7 @@
 # 🙋 接下来做什么
 
 > 迈科咖啡 · 当前待办  
-> 更新：2026-08-07
+> 更新：2026-08-08
 
 ---
 
@@ -17,16 +17,18 @@
 | 6 | `https://api.mk-coffee.com/api/` 验证通过 | 8/7 |
 | 7 | 个人云 → 腾服 SSH 免密 | 8/7 |
 | 8 | `DEPLOY.md` 部署文档 | 8/7 |
-| 9 | 微信支付 V3 后端（统一下单 + 回调 + 签名 + 模拟支付降级） | 8/8 |
-| 10 | 小程序支付流程适配（onPay + 下单即付） | 8/8 |
+| 9 | 微信支付 V3 后端（统一下单 + 回调 + 签名 + 降级模拟支付） | 8/8 |
+| 10 | 小程序支付流程适配（onPay 双路径 + 下单即付） | 8/8 |
 
 ---
 
 ## 接下来要做
 
-### 第一步：ICP 备案（必须，约 15-20 个工作日）
+### 第一步：ICP 备案 🔴 阻塞项
 
 在腾讯云备案系统提交：https://console.cloud.tencent.com/beian
+
+> 这是当前唯一瓶颈——没有备案号，微信域名白名单配不了，小程序无法真机联网测试。
 
 **备案要点**（企业备案）：
 
@@ -49,39 +51,48 @@
 提交 → 腾讯云初审（1-2天）→ 短信核验（24小时内）→ 江苏管局终审（~15天）→ 通过
 ```
 
-> ⚠️ 备案期间网站可以正常访问，因为当前只部署了 API 子域（`api.mk-coffee.com`），根域名 `mk-coffee.com` 没有内容。
+> ⚠️ 备案期间 `api.mk-coffee.com` 可以正常访问（只有 API），根域名没有内容。
 
 ---
 
-### 第二步：微信小程序域名白名单（备案通过后）
+### 第二步：备案通过后的连锁动作
 
-登录 [mp.weixin.qq.com](https://mp.weixin.qq.com) → 开发管理 → 服务器域名：
+备案号下来后，按顺序执行：
 
-| 类型 | 域名 |
-|------|------|
-| request 合法域名 | `https://api.mk-coffee.com` |
-| uploadFile 合法域名 | `https://api.mk-coffee.com` |
-| downloadFile 合法域名 | `https://api.mk-coffee.com` |
+1. **微信小程序域名白名单**  
+   登录 [mp.weixin.qq.com](https://mp.weixin.qq.com) → 开发管理 → 服务器域名，添加：
+   | 类型 | 域名 |
+   |------|------|
+   | request 合法域名 | `https://api.mk-coffee.com` |
+   | uploadFile 合法域名 | `https://api.mk-coffee.com` |
+   | downloadFile 合法域名 | `https://api.mk-coffee.com` |
 
----
+2. **推送最新代码到腾服**
+   ```bash
+   ssh ubuntu@124.220.108.118
+   cd ~/MK-Coffee && git pull && docker compose up -d --build
+   ```
 
-### 第三步：真机测试
+3. **真机测试**  
+   微信开发者工具 → 预览 → 手机扫码，逐页验证：
+   - [ ] 首页（分类、推荐商品）
+   - [ ] 商品详情（规格选择、加入购物车）
+   - [ ] 购物车（勾选、数量修改、结算）
+   - [ ] 下单 → 支付（模拟支付可直接跑通；真实支付需商户号）
+   - [ ] 优惠券（领取、使用）
+   - [ ] 收货地址（CRUD）
+   - [ ] 门店地图
+   - [ ] 个人中心（登录、退出）
 
-微信开发者工具 → 预览 → 手机扫码，逐页测试：
-- [ ] 首页（轮播、推荐商品）
-- [ ] 商品详情（规格选择、加入购物车）
-- [ ] 购物车（勾选、数量、结算）
-- [ ] 下单（模拟支付 → 待支付 → 已支付）
-- [ ] 优惠券（领取、使用）
-- [ ] 收货地址（CRUD）
-- [ ] 门店地图
-- [ ] 个人中心（登录、退出）
+4. **申请微信支付商户号**  
+   登录 [pay.weixin.qq.com](https://pay.weixin.qq.com)，以公司主体申请。  
+   拿到商户号后在 `backend/.env` 填入 6 个 `WXPAY_*` 变量即可从模拟支付切换到真实支付。
 
----
+5. **提交小程序审核**  
+   小程序后台 → 版本管理 → 提交审核。
 
-### 第四步：提交审核
-
-小程序后台 → 版本管理 → 提交审核。
+6. **公安联网备案**（备案通过后 30 天内）  
+   按管局要求完成。
 
 ---
 
@@ -101,7 +112,10 @@ docker compose logs -f
 git pull && docker compose up -d --build
 
 # 证书续期测试
-docker run --rm -v mk-coffee_certbot_www:/var/www/certbot:rw -v mk-coffee_certbot_conf:/etc/letsencrypt:rw certbot/certbot renew --dry-run
+docker run --rm \
+  -v mk-coffee_certbot_www:/var/www/certbot:rw \
+  -v mk-coffee_certbot_conf:/etc/letsencrypt:rw \
+  certbot/certbot renew --dry-run
 ```
 
 详细文档：`DEPLOY.md`（项目根目录）
@@ -117,3 +131,4 @@ docker run --rm -v mk-coffee_certbot_www:/var/www/certbot:rw -v mk-coffee_certbo
 | 3 | 微信域名白名单每月只能改 5 次 | 🟡 |
 | 4 | 备案通过后 30 天内需完成公安联网备案 | 🟢 |
 | 5 | 个人云 VPN 开着时到腾服 SSH 会超时（绕美国），连腾服前先关 VPN | 🟡 |
+| 6 | 微信支付默认走模拟支付，商户号到手后改 `.env` 一行即切换 | 🟢 |

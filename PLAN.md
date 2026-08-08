@@ -1,6 +1,6 @@
 # 苏州迈科咖啡 · 微信小程序开发计划
 
-> 创建日期：2026-08-05 | 版本：v0.2
+> 创建日期：2026-08-05 | 版本：v0.3
 
 ---
 
@@ -28,7 +28,7 @@ Django/MK-Coffee/
 │   ├── products/            # 商品模块
 │   ├── orders/              # 订单模块
 │   ├── coupons/             # 优惠券模块
-│   ├── locations/           # 门店模块
+│   ├── payments/            # 支付模块（微信支付 V3）
 │   └── requirements.txt
 ├── deploy/                  # Docker 部署配置
 │   ├── docker-entrypoint.sh # 入口脚本（等待 DB → migrate → gunicorn）
@@ -46,7 +46,9 @@ Django/MK-Coffee/
 │       ├── cart/            # 购物车
 │       ├── order/           # 订单
 │       ├── user/            # 个人中心
-│       └── store/           # 门店地图
+│       ├── store/           # 门店地图
+│       ├── coupons/         # 优惠券
+│       └── addresses/       # 收货地址
 └── PLAN.md                   # 本文件
 ```
 
@@ -89,7 +91,7 @@ Django/MK-Coffee/
 - [x] 订单状态机（待支付 → 已支付 → 已发货 → 已完成 → 已取消）
 - [x] 取消订单（恢复库存）
 - [x] 模拟支付（占位实现，待接入微信支付）
-- [ ] 微信支付集成（统一下单、支付回调）
+- [x] 微信支付集成（统一下单、支付回调、模拟支付降级）
 
 ### 阶段 5：小程序页面
 - [x] 首页（轮播、推荐商品、分类入口）
@@ -103,21 +105,22 @@ Django/MK-Coffee/
 - [x] 门店定位（微信地图组件）
 - [x] 收货地址管理
 
-### 阶段 7：联调测试 🔄 进行中
+### 阶段 7：部署上线 🔄 进行中
 - [x] Docker 部署方案（Dockerfile + docker-compose + nginx + entrypoint）
 - [x] 小程序 apiBase 改为 `https://api.mk-coffee.com/api`
 - [x] base.py unix_socket 条件化（兼容 Docker / 宿主机）
-- [ ] 个人云 Docker 联调（`docker compose up -d`，开发者工具跳过域名校验）
-- [ ] 购买云服务器 + ICP 备案（用户自助，约 15-20 工作日）
-- [ ] HTTPS 证书申请（certbot + Let's Encrypt，备案通过后在云服务器执行）
-- [ ] 域名白名单配置（微信小程序后台）
-- [ ] 真机测试
+- [x] 购买云服务器（腾讯云上海 2核2G）
+- [x] 腾服 Docker 部署三服务（db + backend + nginx）
+- [x] HTTPS 证书申请（Let's Encrypt，到期 2026-11-05）
+- [ ] ICP 备案（进行中，约 15-20 工作日）🔴
+- [ ] 微信小程序域名白名单（备案通过后）
+- [ ] 真机测试 → 提交审核
 
-### 阶段 8：部署上线
-- [ ] 代码迁移至云服务器（scp + docker compose up -d）
-- [ ] 启用 HTTPS 完整配置（nginx default-ssl.conf）
+### 阶段 8：后续优化（备案通过后）
+- [ ] 申请微信支付商户号 → 填入 WXPAY_* 切换真实支付
 - [ ] 小程序提交审核
-- [ ] 监控与日志
+- [ ] 公安联网备案（备案通过后 30 天内）
+- [ ] 门店地址更新为真实地址
 
 ## Docker 部署架构
 
@@ -166,6 +169,7 @@ orders         — 订单（user_id, order_no, total, status, created_at）
 order_items    — 订单明细（order_id, product_id, spec_id, quantity, price）
 coupons        — 优惠券（name, type, value, min_amount, start_date, end_date）
 user_coupons   — 用户优惠券（user_id, coupon_id, status, used_at）
+payment_records — 支付流水（order_id, user_id, method, status, amount, transaction_id）
 addresses      — 收货地址（user_id, name, phone, province, city, district, detail）
 ```
 
@@ -256,13 +260,15 @@ addresses      — 收货地址（user_id, name, phone, province, city, district
 
 ## 当前状态
 
-- **后端**：users + products + orders + coupons + addresses 模块全部完成（66/66 测试通过）
-- **小程序**：8 页全功能完成（首页、商品详情、购物车、订单、个人中心、优惠券、收货地址、门店地图），年轻化风格 + 响应式适配
+- **后端**：users + products + orders + coupons + payments + addresses 模块全部完成（66/66 测试通过）
+- **小程序**：8 页全功能完成，支付双路径（mock / wechat_jsapi）已适配，年轻化风格 + 响应式适配
 - **域名**：mk-coffee.com（Cloudflare），API 子域 `api.mk-coffee.com`，前端 apiBase 已改为 HTTPS
 - **部署方案**：Docker + docker-compose（Dockerfile、docker-compose.yml、nginx conf.d、entrypoint 已就绪）
 - **服务器**：腾讯云上海 2核2G（腾服），IP `124.220.108.118`，Docker 三服务运行中
-- **HTTPS**：Let's Encrypt 证书已申请，`https://api.mk-coffee.com/api/` 正常
-- **下一步**：微信小程序后台域名白名单 ← 真机测试 ← 提交审核
+- **HTTPS**：Let's Encrypt 证书已申请，到期 2026-11-05，cron 自动续期
+- **微信支付**：后端 V3 全流程就绪，默认降级为模拟支付；商户号到手后改 `.env` 即切
+- **阻塞项**：ICP 备案（进行中）🔴
+- **下一步**：备案通过 → 域名白名单 → 真机测试 → 商户号 → 提交审核
 
 ### 2026-08-08 · 微信支付 V3 集成
 

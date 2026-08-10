@@ -23,7 +23,7 @@ class CouponViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         """领取优惠券"""
         coupon = self.get_object()
 
-        # 状态校验
+        # 状态校验（不依赖锁，外部检查即可）
         if coupon.status != "active":
             return Response({"code": 400, "data": None, "msg": "优惠券已停用"}, status=400)
 
@@ -34,12 +34,16 @@ class CouponViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if now > coupon.end_date:
             return Response({"code": 400, "data": None, "msg": "优惠券已过期"}, status=400)
 
-        # 库存校验
-        if coupon.stock > 0 and coupon.claimed_count >= coupon.stock:
-            return Response({"code": 400, "data": None, "msg": "优惠券已领完"}, status=400)
-
         try:
             with transaction.atomic():
+                # 锁定优惠券行，防止并发超领
+                coupon = Coupon.objects.select_for_update().get(pk=coupon.pk)
+
+                # 库存校验（使用数据库查询替代 Python property）
+                claimed = UserCoupon.objects.filter(coupon=coupon).count()
+                if coupon.stock > 0 and claimed >= coupon.stock:
+                    return Response({"code": 400, "data": None, "msg": "优惠券已领完"}, status=400)
+
                 user_coupon = UserCoupon.objects.create(
                     user=request.user, coupon=coupon,
                 )

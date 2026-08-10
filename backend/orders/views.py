@@ -1,5 +1,6 @@
 """订单模块 · 视图"""
 from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
@@ -8,6 +9,7 @@ from rest_framework.response import Response
 
 from payments.models import PaymentRecord
 from payments.wxpay import get_wxpay_client
+from products.models import Product, Spec
 from .models import CartItem, Order, OrderItem
 from .serializers import (
     CartItemSerializer,
@@ -42,11 +44,16 @@ class CartViewSet(
         spec = serializer.validated_data.get("spec")
         quantity = serializer.validated_data.get("quantity", 1)
 
-        existing = CartItem.objects.filter(
+        # 修复：MySQL 中 spec=NULL 时 spec=spec 无法匹配（NULL ≠ NULL）
+        # 需用 spec__isnull=True 替代 spec=None 查询
+        existing_qs = CartItem.objects.filter(
             user=request.user,
             product=product,
-            spec=spec,
-        ).first()
+        )
+        if spec is None:
+            existing = existing_qs.filter(spec__isnull=True).first()
+        else:
+            existing = existing_qs.filter(spec=spec).first()
 
         if existing:
             existing.quantity += quantity
@@ -144,6 +151,13 @@ class OrderViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # 锁定涉及的 Product 和 Spec 行，防止并发超卖
+        product_ids = list({item.product_id for item in cart_items})
+        spec_ids = list({item.spec_id for item in cart_items if item.spec_id})
+
+        locked_products = {p.pk: p for p in Product.objects.filter(pk__in=product_ids).select_for_update()}
+        locked_specs = {s.pk: s for s in Spec.objects.filter(pk__in=spec_ids).select_for_update()}
+
         # 验证库存 & 计算总价
         order_items_data = []
         total = 0
@@ -163,19 +177,19 @@ class OrderViewSet(
             price = spec.price if spec else product.price
             quantity = item.quantity
 
-            # 库存检查
+            # 库存检查（基于锁定行）
             if spec:
-                if spec.stock < quantity:
+                if locked_specs[spec.pk].stock < quantity:
                     return Response(
                         {"code": 400, "data": None,
-                         "msg": f"「{product.name}-{spec.name}」库存不足（余 {spec.stock}）"},
+                         "msg": f"「{product.name}-{spec.name}」库存不足（余 {locked_specs[spec.pk].stock}）"},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
             else:
-                if product.stock < quantity:
+                if locked_products[product.pk].stock < quantity:
                     return Response(
                         {"code": 400, "data": None,
-                         "msg": f"「{product.name}」库存不足（余 {product.stock}）"},
+                         "msg": f"「{product.name}」库存不足（余 {locked_products[product.pk].stock}）"},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -201,16 +215,14 @@ class OrderViewSet(
         for item_data in order_items_data:
             OrderItem.objects.create(order=order, **item_data)
 
-        # 扣减库存
+        # 原子扣减库存（F表达式，避免竞态）
         for item_data in order_items_data:
             spec = item_data["spec"]
             if spec:
-                spec.stock -= item_data["quantity"]
-                spec.save(update_fields=["stock"])
+                Spec.objects.filter(pk=spec.pk).update(stock=F("stock") - item_data["quantity"])
             else:
                 product = item_data["product"]
-                product.stock -= item_data["quantity"]
-                product.save(update_fields=["stock"])
+                Product.objects.filter(pk=product.pk).update(stock=F("stock") - item_data["quantity"])
 
         # 清空购物车
         cart_items.delete()
@@ -226,24 +238,24 @@ class OrderViewSet(
         """取消订单（仅待支付状态可取消）"""
         order = self.get_object()
 
-        if order.status != "pending":
-            return Response(
-                {"code": 400, "data": None, "msg": f"订单状态为「{order.get_status_display()}」，无法取消"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         with transaction.atomic():
+            order = Order.objects.select_for_update().get(pk=order.pk)
+
+            if order.status != "pending":
+                return Response(
+                    {"code": 400, "data": None, "msg": f"订单状态为「{order.get_status_display()}」，无法取消"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             order.status = "cancelled"
             order.save(update_fields=["status", "updated_at"])
 
-            # 恢复库存
+            # 原子恢复库存（F表达式，避免竞态）
             for item in order.items.select_related("spec", "product"):
                 if item.spec:
-                    item.spec.stock += item.quantity
-                    item.spec.save(update_fields=["stock"])
+                    Spec.objects.filter(pk=item.spec.pk).update(stock=F("stock") + item.quantity)
                 else:
-                    item.product.stock += item.quantity
-                    item.product.save(update_fields=["stock"])
+                    Product.objects.filter(pk=item.product.pk).update(stock=F("stock") + item.quantity)
 
         return Response({
             "code": 0,
@@ -259,75 +271,78 @@ class OrderViewSet(
         - 微信支付已配置 → 统一下单，返回小程序支付参数
         - 微信支付未配置 → 模拟支付
         """
-        order = self.get_object()
-
-        if order.status != "pending":
-            return Response(
-                {"code": 400, "data": None, "msg": f"订单状态为「{order.get_status_display()}」，无法支付"},
-                status=status.HTTP_400_BAD_REQUEST,
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(
+                pk=self.kwargs["pk"], user=request.user,
             )
 
-        wxpay = get_wxpay_client()
-
-        if wxpay:
-            # ---- 真实微信支付 ----
-            amount_fen = int(order.total * 100)
-            description = f"迈科咖啡-{order.order_no[:8]}"
-
-            try:
-                result = wxpay.jsapi_order(
-                    out_trade_no=order.order_no,
-                    amount=amount_fen,
-                    payer_openid=request.user.openid,
-                    description=description,
-                )
-            except Exception as e:
+            if order.status != "pending":
                 return Response(
-                    {"code": 500, "data": None, "msg": f"微信支付下单失败: {e}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    {"code": 400, "data": None, "msg": f"订单状态为「{order.get_status_display()}」，无法支付"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            prepay_id = result.get("prepay_id", "")
+            wxpay = get_wxpay_client()
 
-            # 记录支付流水
-            PaymentRecord.objects.create(
-                order=order,
-                user=request.user,
-                method="wechat_jsapi",
-                amount=order.total,
-                prepay_id=prepay_id,
-            )
+            if wxpay:
+                # ---- 真实微信支付 ----
+                amount_fen = int(order.total * 100)
+                description = f"迈科咖啡-{order.order_no[:8]}"
 
-            # 返回小程序调起支付所需参数
-            pay_params = wxpay.sign_miniapp_params(prepay_id)
+                try:
+                    result = wxpay.jsapi_order(
+                        out_trade_no=order.order_no,
+                        amount=amount_fen,
+                        payer_openid=request.user.openid,
+                        description=description,
+                    )
+                except Exception as e:
+                    return Response(
+                        {"code": 500, "data": None, "msg": f"微信支付下单失败: {e}"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
 
-            return Response({
-                "code": 0,
-                "data": {
-                    "method": "wechat_jsapi",
-                    "pay_params": pay_params,
-                },
-                "msg": "ok",
-            })
+                prepay_id = result.get("prepay_id", "")
 
-        else:
-            # ---- 模拟支付 ----
-            order.status = "paid"
-            order.save(update_fields=["status", "updated_at"])
+                # 记录支付流水
+                PaymentRecord.objects.create(
+                    order=order,
+                    user=request.user,
+                    method="wechat_jsapi",
+                    amount=order.total,
+                    prepay_id=prepay_id,
+                )
 
-            PaymentRecord.objects.create(
-                order=order,
-                user=request.user,
-                method="mock",
-                status="paid",
-                amount=order.total,
-            )
+                # 返回小程序调起支付所需参数
+                pay_params = wxpay.sign_miniapp_params(prepay_id)
 
-            return Response({
-                "code": 0,
-                "data": {
-                    "method": "mock",
-                    "order": OrderDetailSerializer(order).data,
-                },
-                "msg": "支付成功（模拟）",
-            })
+                return Response({
+                    "code": 0,
+                    "data": {
+                        "method": "wechat_jsapi",
+                        "pay_params": pay_params,
+                    },
+                    "msg": "ok",
+                })
+
+            else:
+                # ---- 模拟支付 ----
+                order.status = "paid"
+                order.save(update_fields=["status", "updated_at"])
+
+                PaymentRecord.objects.create(
+                    order=order,
+                    user=request.user,
+                    method="mock",
+                    status="paid",
+                    amount=order.total,
+                )
+
+                return Response({
+                    "code": 0,
+                    "data": {
+                        "method": "mock",
+                        "order": OrderDetailSerializer(order).data,
+                    },
+                    "msg": "支付成功（模拟）",
+                })

@@ -280,3 +280,27 @@ addresses      — 收货地址（user_id, name, phone, province, city, district
 - **配置**：`backend/.env` 新增 WXPAY_* 环境变量（全可选，空则降级模拟支付）
 - **测试**：全部 66/66 通过（含 payments 迁移）
 - **下一步**：备案通过 + 商户号到手后填入 WXPAY_* 即可启用真实支付
+
+### 2026-08-10 · 全项目 BUG 审查与修复
+
+经 4 个并行审查代理全量扫描代码，修复 **10 个 BUG**（7 文件，+135/-97 行），66/66 测试通过。
+
+#### 🔴 严重 BUG（安全/数据一致性）
+
+- **JWT Refresh Token 无黑名单**：令牌泄露后无法吊销。启用 `rest_framework_simplejwt.token_blacklist`，`BLACKLIST_AFTER_ROTATION = True`，已运行 token_blacklist 迁移。
+- **购物车 NULL spec 重复插入**：MySQL 中 `NULL ≠ NULL`，无规格商品可重复加入购物车。修复 `CartViewSet.create()` 中 `spec=None` 时的查询逻辑（`spec__isnull=True` 替代 `spec=None`）。
+- **下单库存竞态条件**：`select_for_update()` 仅锁 CartItem 不锁 Product/Spec，并发下单可超卖。修复：事务内对 Product/Spec 行加锁，扣减改用 `F()` 原子表达式，取消订单同理。
+- **支付重复扣款竞态**：`pay()` 状态检查与执行支付之间无锁。修复：`transaction.atomic()` + `select_for_update()` 包裹全流程。
+- **领券库存超发竞态**：库存检查在事务外、`claimed_count` 为 Python property。修复：库存检查移入事务内，`select_for_update()` 锁 Coupon 行，DB COUNT 替代 property。
+
+#### 🟠 中高危 BUG
+
+- **CartItemSerializer 允许 quantity=0**：创建购物车无数量下限校验。新增 `validate_quantity`。
+- **N+1 查询 ×2**：`ProductViewSet` 列表缺 `select_related("category")`；`OrderListSerializer.get_item_count` 用 `.count()` 浪费 prefetch。分别添加 `select_related` 和改用 `len()`。
+- **WX_APP_SECRET 空值无保护**：未配置时微信登录静默失败。添加 `warnings.warn()` 告警。
+- **异常格式化丢失多字段错误**：`_format_detail` 只返回首字段首错误。改为遍历所有字段、支持嵌套 serializer 错误。
+
+#### 涉及文件
+
+- 修改：`backend/mkcoffee/settings/base.py`、`backend/orders/views.py`、`backend/orders/serializers.py`、`backend/orders/models.py`、`backend/coupons/views.py`、`backend/mkcoffee/utils/exceptions.py`、`backend/products/views.py`
+- 迁移：`token_blacklist` 全系列迁移已应用

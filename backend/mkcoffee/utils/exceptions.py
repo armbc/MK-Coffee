@@ -32,13 +32,19 @@ def custom_exception_handler(exc, context):
 
 
 def _format_detail(detail):
-    """格式化错误信息为字符串"""
+    """格式化错误信息为可读字符串"""
     if isinstance(detail, dict):
-        # 取第一个字段的第一个错误信息
+        parts = []
         for key, value in detail.items():
             if isinstance(value, list):
-                return f"{key}: {value[0]}"
-            return str(value)
+                # 多个字段各取第一个错误
+                parts.append(f"{key}: {value[0]}")
+            elif isinstance(value, dict):
+                # 嵌套错误（如嵌套 serializer），递归处理
+                parts.append(f"{key}: {_format_detail(value)}")
+            else:
+                parts.append(f"{key}: {value}")
+        return "; ".join(parts)
     if isinstance(detail, list):
         return str(detail[0]) if detail else ""
     return str(detail)

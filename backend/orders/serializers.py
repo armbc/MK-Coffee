@@ -22,6 +22,12 @@ class CartItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+    def validate_quantity(self, value):
+        """数量必须为正整数"""
+        if value < 1:
+            raise serializers.ValidationError("数量不能小于 1")
+        return value
+
     def validate_product(self, value):
         """仅允许上架商品加入购物车"""
         if value.status != "on":
@@ -76,7 +82,8 @@ class OrderListSerializer(serializers.ModelSerializer):
         ]
 
     def get_item_count(self, obj):
-        return obj.items.count()
+        # 使用 len() 利用 prefetch_related 缓存，避免 N+1 查询
+        return len(obj.items.all())
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):

@@ -19,7 +19,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """商品接口（只读）"""
-    queryset = Product.objects.filter(status="on").prefetch_related("specs")
+    queryset = Product.objects.filter(status="on").select_related("category").prefetch_related("specs")
     permission_classes = [AllowAny]
 
     def get_serializer_class(self):

@@ -32,6 +32,7 @@ class CartItem(models.Model):
         ordering = ["-created_at"]
         constraints = [
             # 同一用户同一商品同一规格不可重复
+            # 注：MySQL 将 NULL 视为不等值，故无规格时重复由应用层 CartViewSet.create() 保证
             models.UniqueConstraint(
                 fields=["user", "product", "spec"],
                 name="unique_cart_item",

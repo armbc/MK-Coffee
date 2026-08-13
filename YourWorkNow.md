@@ -24,7 +24,7 @@
 
 ## 接下来要做
 
-### 第一步：ICP 备案 🔴 阻塞项
+### 第一步：ICP 备案 🔄 进行中（2026-08-13 启动）
 
 在腾讯云备案系统提交：https://console.cloud.tencent.com/beian
 

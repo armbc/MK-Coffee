@@ -260,13 +260,13 @@ addresses      — 收货地址（user_id, name, phone, province, city, district
 
 ## 当前状态
 
-- **后端**：users + products + orders + coupons + payments + addresses 模块全部完成（66/66 测试通过）
+- **后端**：users + products + orders + coupons + payments + addresses 模块全部完成（84/84 测试通过）
 - **小程序**：8 页全功能完成，支付双路径（mock / wechat_jsapi）已适配，年轻化风格 + 响应式适配
 - **域名**：mk-coffee.com（Cloudflare），API 子域 `api.mk-coffee.com`，前端 apiBase 已改为 HTTPS
 - **部署方案**：Docker + docker-compose（Dockerfile、docker-compose.yml、nginx conf.d、entrypoint 已就绪）
 - **服务器**：腾讯云上海 2核2G（腾服），IP `124.220.108.118`，Docker 三服务运行中
 - **HTTPS**：Let's Encrypt 证书已申请，到期 2026-11-05，cron 自动续期
-- **微信支付**：后端 V3 全流程就绪，默认降级为模拟支付；商户号到手后改 `.env` 即切
+- **微信支付**：V3 全流程就绪（平台证书验签 + 金额校验），`WXPAY_ENABLED=false` 走模拟支付；商户号到手后改 `.env` 即切，启用后配置错误会明确报错（fail-closed）
 - **阻塞项**：ICP 备案（进行中）🔴
 - **下一步**：备案通过 → 域名白名单 → 真机测试 → 商户号 → 提交审核
 
@@ -304,3 +304,27 @@ addresses      — 收货地址（user_id, name, phone, province, city, district
 
 - 修改：`backend/mkcoffee/settings/base.py`、`backend/orders/views.py`、`backend/orders/serializers.py`、`backend/orders/models.py`、`backend/coupons/views.py`、`backend/mkcoffee/utils/exceptions.py`、`backend/products/views.py`
 - 迁移：`token_blacklist` 全系列迁移已应用
+
+### 2026-08-13 · 安全审查修复 + MySQL redo log 抢救
+
+#### MySQL 数据目录抢救（个人云）
+
+- **故障**：数据目录 8-12 从旧位置（`/mnt/Linux_Code`）迁移时 `#innodb_redo` 漏拷 `#ib_redo23/24`，redo 链断裂无法启动；且源实例非正常关闭（undo 有活跃事务），清空 redo 后启动即触发 InnoDB 断言（`trx0rec.ic:93`）秒退
+- **干扰**：systemd 用户服务 `mysql.service`（Restart=on-failure）每 ~2.5 分钟重启失败循环，掩盖真实断言日志
+- **修复**：备份数据目录 → 隔离残缺 redo → `innodb_force_recovery=6` 只读启动 → mysqldump 导出 mkcoffee（21 表）→ 全新初始化数据目录 → 恢复 root 密码并导入 → 交还 systemd 托管
+- **结果**：已提交数据零丢失（8 商品 / 1 用户 / 2 订单核对一致），66 测试全过
+- **备份留存**：`~/MySQL8/backups/datadir-before-redo-fix-20260813.tar.gz`（完整目录）、`mkcoffee-rescue-20260813.sql`（逻辑备份）、`redo-quarantine-20260813/`、`datadir-corrupt-20260813/`
+- **教训**：迁移数据目录必须先干净关闭源实例；小库优先 mysqldump 逻辑迁移
+
+#### 安全审查（3 个高优先级修复，84/84 测试通过）
+
+- **#1 模拟支付静默降级（严重）**：`WXPAY_ENABLED` 开关此前从未被读取，启用微信支付后任一配置错误都会静默降级为"免费下单"。修复：`get_wxpay_client()` 在 `WXPAY_ENABLED=true` 但配置缺失/初始化失败时抛 `WXPayError`；`pay()` 明确报错拒绝支付，订单保持待支付。`WXPAY_ENABLED=false` 行为不变（仍走模拟支付）
+- **#2 回调验签空实现（严重）**：`verify_callback_sign` 此前直接 `return True`。修复：完整实现微信支付平台证书验签（`/v3/certificates` 下载 → APIv3 解密 → 本地缓存，序列号未命中自动刷新），RSA-SHA256 验签 + 5 分钟防重放时间窗；回调新增 `appid`/`mchid` 校验、`trade_state` 确认、**金额一致性校验**（官方强制要求）
+- **#4 下单误删购物车（高）**：`cart_items.delete()` 会按 user 重新查询，误删下单事务期间新增条目。修复：按已锁定主键集合删除
+- **附带修复**：`ApiResponseMiddleware` 会把微信回调的 `{"code":"SUCCESS"}` 二次包装导致微信不停重试，现已排除 `/api/payments/callback/` 路径
+
+#### 涉及文件
+
+- 修改：`backend/payments/wxpay.py`、`backend/payments/views.py`、`backend/orders/views.py`、`backend/mkcoffee/middleware.py`
+- 新增：`backend/payments/tests.py`（18 个测试：fail-closed / 验签全路径 / 回调端到端）
+- **待办（备案通过后）**：真机验证第一笔真实支付时盯日志；`WXPAY_CERT_PATH` 建议指向固定路径（默认用系统临时目录）

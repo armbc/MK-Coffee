@@ -17,6 +17,10 @@ class ApiResponseMiddleware:
         if not request.path.startswith("/api/"):
             return self.get_response(request)
 
+        # 微信支付回调必须返回微信协议格式 {"code": "SUCCESS"}，不包装
+        if request.path.startswith("/api/payments/callback"):
+            return self.get_response(request)
+
         response = self.get_response(request)
 
         # 只包装成功的 JSON 响应（DRF 返回的）

@@ -8,11 +8,15 @@
 import base64
 import json
 import logging
+import os
+import tempfile
 import time
 import uuid
 from typing import Optional
 
 import requests
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -27,6 +31,18 @@ class WXPayError(Exception):
     """微信支付异常"""
 
 
+# 回调验签时间戳容忍窗口（防重放）
+CALLBACK_TIMESTAMP_TOLERANCE = 300
+
+
+def _header(headers, name: str) -> str:
+    """大小写不敏感地读取请求头（兼容 dict 与 Django HttpHeaders）"""
+    for key, value in headers.items():
+        if key.lower() == name.lower():
+            return value
+    return ""
+
+
 class WXPayClient:
     """微信支付 V3 客户端"""
 
@@ -38,12 +54,19 @@ class WXPayClient:
         private_key_pem: str,
         app_id: str,
         notify_url: str,
+        cert_path: str = "",
     ):
         self.mch_id = mch_id
         self.api_v3_key = api_v3_key
         self.serial_no = serial_no
         self.app_id = app_id
         self.notify_url = notify_url
+        self.cert_path = cert_path
+        self._certs = None  # 实例级平台证书缓存 {serial_no: pem}
+
+        # APIv3 密钥必须是 32 字节，提前校验避免运行时才暴露
+        if len(api_v3_key.encode("utf-8")) != 32:
+            raise WXPayError("WXPAY_API_V3_KEY 必须为 32 字节")
 
         # 加载商户私钥
         try:
@@ -184,32 +207,137 @@ class WXPayClient:
             "paySign": self._sign(sign_str),
         }
 
+    # ==================== 平台证书管理 ====================
+
+    def _load_cached_certificates(self) -> dict:
+        """读取缓存的微信支付平台证书 {serial_no: pem}"""
+        if self._certs is not None:
+            return self._certs
+        certs = {}
+        if self.cert_path and os.path.exists(self.cert_path):
+            try:
+                with open(self.cert_path, "r", encoding="utf-8") as f:
+                    certs = json.load(f)
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning("平台证书缓存读取失败，将重新下载: %s", e)
+                certs = {}
+        self._certs = certs
+        return certs
+
+    def _save_certificates(self, certs: dict) -> None:
+        """写入平台证书缓存（权限 600）"""
+        if not self.cert_path:
+            return
+        try:
+            with open(self.cert_path, "w", encoding="utf-8") as f:
+                json.dump(certs, f)
+            os.chmod(self.cert_path, 0o600)
+        except OSError as e:
+            logger.warning("平台证书缓存写入失败: %s", e)
+
+    def _download_platform_certificates(self) -> dict:
+        """
+        下载并解密微信支付平台证书（GET /v3/certificates）
+
+        返回 {serial_no: pem}，合并进本地缓存。
+        """
+        try:
+            result = self._request("GET", "/v3/certificates")
+        except Exception as e:
+            raise WXPayError(f"下载微信平台证书失败: {e}")
+
+        certs = {}
+        for item in result.get("data", []):
+            serial = item.get("serial_no")
+            enc = item.get("encrypt_certificate")
+            if not serial or not enc:
+                continue
+            try:
+                certs[serial] = self._aesgcm_decrypt(enc)
+            except Exception as e:
+                logger.warning("解密平台证书 %s 失败: %s", serial, e)
+
+        if not certs:
+            raise WXPayError("微信平台证书列表为空")
+
+        merged = {**self._load_cached_certificates(), **certs}
+        self._certs = merged
+        self._save_certificates(merged)
+        logger.info("已更新 %d 个微信支付平台证书", len(certs))
+        return merged
+
+    def _get_platform_certificates(self, serial: str = "") -> dict:
+        """获取平台证书；本地缺少指定序列号时刷新一次（证书轮换场景）"""
+        certs = self._load_cached_certificates()
+        if serial and serial not in certs:
+            try:
+                certs = self._download_platform_certificates()
+            except WXPayError as e:
+                logger.error("刷新平台证书失败: %s", e)
+        return certs
+
     # ==================== 回调验签 ====================
 
-    @staticmethod
-    def verify_callback_sign(
-        headers: dict,
-        body: str,
-    ) -> bool:
+    def verify_callback_sign(self, headers, body: str) -> bool:
         """
-        验证支付回调签名
+        验证支付回调签名（微信支付平台证书，RSA-SHA256）
 
-        签名串: 时间戳\n随机串\n响应体\n
-
-        需要微信支付平台证书公钥（可预先下载缓存）。
-        简化实现：信任 TLS 层加密，不做应用层签名校验。
-        生产环境应实现完整验签。
+        签名串: 时间戳\n随机串\n请求体\n
+        请求头:
+            Wechatpay-Timestamp / Wechatpay-Nonce /
+            Wechatpay-Signature / Wechatpay-Serial
         """
-        # 完整实现需要：
-        # 1. 从微信下载平台证书（GET /v3/certificates）
-        # 2. 用证书公钥验证 Wechatpay-Signature
-        # 当前为简化实现，标记为待完善
-        logger.warning(
-            "支付回调验签为简化实现，生产环境需实现完整平台证书验签"
-        )
-        return True
+        timestamp = _header(headers, "Wechatpay-Timestamp")
+        nonce = _header(headers, "Wechatpay-Nonce")
+        signature = _header(headers, "Wechatpay-Signature")
+        serial = _header(headers, "Wechatpay-Serial")
+
+        if not all([timestamp, nonce, signature, serial]):
+            logger.warning("回调缺少验签请求头")
+            return False
+
+        # 防重放：时间戳偏差超过容忍窗口直接拒绝
+        try:
+            if abs(int(time.time()) - int(timestamp)) > CALLBACK_TIMESTAMP_TOLERANCE:
+                logger.warning("回调时间戳超出容忍窗口")
+                return False
+        except (TypeError, ValueError):
+            return False
+
+        sign_str = f"{timestamp}\n{nonce}\n{body}\n"
+
+        certs = self._get_platform_certificates(serial)
+        pem = certs.get(serial)
+        if not pem:
+            logger.warning("未找到序列号为 %s 的平台证书", serial)
+            return False
+
+        try:
+            cert = x509.load_pem_x509_certificate(pem.encode("utf-8"))
+            cert.public_key().verify(
+                base64.b64decode(signature),
+                sign_str.encode("utf-8"),
+                padding.PKCS1v15(),
+                hashes.SHA256(),
+            )
+            return True
+        except InvalidSignature:
+            logger.warning("回调签名校验失败")
+            return False
+        except Exception as e:
+            logger.error("回调验签异常: %s", e)
+            return False
 
     # ==================== 回调解密 ====================
+
+    def _aesgcm_decrypt(self, resource: dict) -> str:
+        """AEAD_AES_256_GCM 解密，返回明文字符串"""
+        ciphertext = base64.b64decode(resource["ciphertext"])
+        associated_data = resource.get("associated_data", "").encode("utf-8")
+        nonce = resource["nonce"].encode("utf-8")
+
+        aesgcm = AESGCM(self.api_v3_key.encode("utf-8"))
+        return aesgcm.decrypt(nonce, ciphertext, associated_data).decode("utf-8")
 
     def decrypt_callback(self, resource: dict) -> dict:
         """
@@ -226,45 +354,64 @@ class WXPayClient:
         Returns:
             解密后的 JSON 数据
         """
-        ciphertext = base64.b64decode(resource["ciphertext"])
-        associated_data = resource.get("associated_data", "").encode("utf-8")
-        nonce = resource["nonce"].encode("utf-8")
-
-        aesgcm = AESGCM(self.api_v3_key.encode("utf-8"))
-        plaintext = aesgcm.decrypt(nonce, ciphertext, associated_data)
-
-        return json.loads(plaintext.decode("utf-8"))
+        return json.loads(self._aesgcm_decrypt(resource))
 
 
 # ==================== 便捷函数 ====================
 
 
 def get_wxpay_client() -> Optional[WXPayClient]:
-    """获取微信支付客户端实例，未配置时返回 None"""
-    mch_id = getattr(settings, "WXPAY_MCH_ID", "") or ""
-    api_v3_key = getattr(settings, "WXPAY_API_V3_KEY", "") or ""
-    serial_no = getattr(settings, "WXPAY_SERIAL_NO", "") or ""
-    private_key = getattr(settings, "WXPAY_PRIVATE_KEY", "") or ""
-    app_id = getattr(settings, "WX_APP_ID", "") or ""
-    notify_url = getattr(settings, "WXPAY_NOTIFY_URL", "") or ""
+    """
+    获取微信支付客户端实例。
 
-    if not all([mch_id, api_v3_key, serial_no, private_key, app_id]):
+    - ``WXPAY_ENABLED=false``（默认）→ 返回 ``None``，调用方走模拟支付
+    - ``WXPAY_ENABLED=true`` 但配置缺失或初始化失败 → 抛 ``WXPayError``
+
+    设计原则：fail-closed。已显式启用微信支付却不可用时，绝不允许
+    静默降级为模拟支付（否则任何配置失误都会导致“免费下单”）。
+    """
+    if not getattr(settings, "WXPAY_ENABLED", False):
         return None
+
+    conf = {
+        "WXPAY_MCH_ID": getattr(settings, "WXPAY_MCH_ID", "") or "",
+        "WXPAY_API_V3_KEY": getattr(settings, "WXPAY_API_V3_KEY", "") or "",
+        "WXPAY_SERIAL_NO": getattr(settings, "WXPAY_SERIAL_NO", "") or "",
+        "WXPAY_PRIVATE_KEY": getattr(settings, "WXPAY_PRIVATE_KEY", "") or "",
+        "WX_APP_ID": getattr(settings, "WX_APP_ID", "") or "",
+        "WXPAY_NOTIFY_URL": getattr(settings, "WXPAY_NOTIFY_URL", "") or "",
+    }
+    missing = [name for name, value in conf.items() if not value]
+    if missing:
+        raise WXPayError(
+            f"WXPAY_ENABLED=true 但配置缺失: {', '.join(missing)}"
+        )
+
+    cert_path = getattr(settings, "WXPAY_CERT_PATH", "") or ""
+    if not cert_path:
+        cert_path = os.path.join(
+            tempfile.gettempdir(), "mkcoffee_wxpay_certs.json"
+        )
 
     try:
         return WXPayClient(
-            mch_id=mch_id,
-            api_v3_key=api_v3_key,
-            serial_no=serial_no,
-            private_key_pem=private_key,
-            app_id=app_id,
-            notify_url=notify_url,
+            mch_id=conf["WXPAY_MCH_ID"],
+            api_v3_key=conf["WXPAY_API_V3_KEY"],
+            serial_no=conf["WXPAY_SERIAL_NO"],
+            private_key_pem=conf["WXPAY_PRIVATE_KEY"],
+            app_id=conf["WX_APP_ID"],
+            notify_url=conf["WXPAY_NOTIFY_URL"],
+            cert_path=cert_path,
         )
-    except WXPayError as e:
-        logger.error(f"微信支付客户端初始化失败: {e}")
-        return None
+    except WXPayError:
+        raise
+    except Exception as e:
+        raise WXPayError(f"微信支付客户端初始化失败: {e}")
 
 
 def is_wxpay_enabled() -> bool:
-    """微信支付是否已配置"""
-    return get_wxpay_client() is not None
+    """微信支付是否已启用且可用"""
+    try:
+        return get_wxpay_client() is not None
+    except WXPayError:
+        return False

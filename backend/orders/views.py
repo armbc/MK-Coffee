@@ -1,4 +1,7 @@
 """订单模块 · 视图"""
+import logging
+
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
@@ -8,7 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from payments.models import PaymentRecord
-from payments.wxpay import get_wxpay_client
+from payments.wxpay import get_wxpay_client, WXPayError
+
+logger = logging.getLogger(__name__)
 from products.models import Product, Spec
 from .models import CartItem, Order, OrderItem
 from .serializers import (
@@ -224,8 +229,12 @@ class OrderViewSet(
                 product = item_data["product"]
                 Product.objects.filter(pk=product.pk).update(stock=F("stock") - item_data["quantity"])
 
-        # 清空购物车
-        cart_items.delete()
+        # 清空购物车 —— 仅删除本次下单已锁定的条目。
+        # 直接 cart_items.delete() 会按 user 重新查询，可能误删
+        # 下单事务期间用户新加入购物车的商品。
+        CartItem.objects.filter(
+            pk__in=[item.pk for item in cart_items],
+        ).delete()
 
         return Response({
             "code": 0,
@@ -282,51 +291,8 @@ class OrderViewSet(
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            wxpay = get_wxpay_client()
-
-            if wxpay:
-                # ---- 真实微信支付 ----
-                amount_fen = int(order.total * 100)
-                description = f"迈科咖啡-{order.order_no[:8]}"
-
-                try:
-                    result = wxpay.jsapi_order(
-                        out_trade_no=order.order_no,
-                        amount=amount_fen,
-                        payer_openid=request.user.openid,
-                        description=description,
-                    )
-                except Exception as e:
-                    return Response(
-                        {"code": 500, "data": None, "msg": f"微信支付下单失败: {e}"},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    )
-
-                prepay_id = result.get("prepay_id", "")
-
-                # 记录支付流水
-                PaymentRecord.objects.create(
-                    order=order,
-                    user=request.user,
-                    method="wechat_jsapi",
-                    amount=order.total,
-                    prepay_id=prepay_id,
-                )
-
-                # 返回小程序调起支付所需参数
-                pay_params = wxpay.sign_miniapp_params(prepay_id)
-
-                return Response({
-                    "code": 0,
-                    "data": {
-                        "method": "wechat_jsapi",
-                        "pay_params": pay_params,
-                    },
-                    "msg": "ok",
-                })
-
-            else:
-                # ---- 模拟支付 ----
+            if not settings.WXPAY_ENABLED:
+                # ---- 模拟支付（仅在 WXPAY_ENABLED=false 时可用）----
                 order.status = "paid"
                 order.save(update_fields=["status", "updated_at"])
 
@@ -346,3 +312,54 @@ class OrderViewSet(
                     },
                     "msg": "支付成功（模拟）",
                 })
+
+            # ---- 真实微信支付 ----
+            # fail-closed：已启用微信支付但配置缺失/初始化失败时，
+            # 必须拒绝支付，绝不静默降级为模拟支付（防止“免费下单”）。
+            try:
+                wxpay = get_wxpay_client()
+            except WXPayError as e:
+                logger.error("微信支付已启用但不可用: %s", e)
+                return Response(
+                    {"code": 500, "data": None, "msg": "微信支付配置错误，请联系客服"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            amount_fen = int(order.total * 100)
+            description = f"迈科咖啡-{order.order_no[:8]}"
+
+            try:
+                result = wxpay.jsapi_order(
+                    out_trade_no=order.order_no,
+                    amount=amount_fen,
+                    payer_openid=request.user.openid,
+                    description=description,
+                )
+            except Exception as e:
+                return Response(
+                    {"code": 500, "data": None, "msg": f"微信支付下单失败: {e}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            prepay_id = result.get("prepay_id", "")
+
+            # 记录支付流水
+            PaymentRecord.objects.create(
+                order=order,
+                user=request.user,
+                method="wechat_jsapi",
+                amount=order.total,
+                prepay_id=prepay_id,
+            )
+
+            # 返回小程序调起支付所需参数
+            pay_params = wxpay.sign_miniapp_params(prepay_id)
+
+            return Response({
+                "code": 0,
+                "data": {
+                    "method": "wechat_jsapi",
+                    "pay_params": pay_params,
+                },
+                "msg": "ok",
+            })

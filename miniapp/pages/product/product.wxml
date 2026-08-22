@@ -11,7 +11,7 @@
       <view class="product-cat">{{product.category_name}}</view>
       <view class="product-price-row">
         <view class="price-left">
-          <text class="product-price">¥{{currentPrice}}</text>
+          <text class="product-price">¥{{currentPriceText}}</text>
           <text class="product-stock" wx:if="{{product.stock > 0}}">库存 {{product.stock}}</text>
           <text class="product-stock out" wx:else>已售罄</text>
         </view>

@@ -1,7 +1,9 @@
 Page({
   data: {
-    latitude: 31.2990,       // 苏州工业园区坐标
-    longitude: 120.7290,
+    latitude: 31.2990,       // 地图中心纬度
+    longitude: 120.7290,     // 地图中心经度
+    storeLat: 31.2990,       // 门店纬度
+    storeLng: 120.7290,      // 门店经度
     markers: [{
       id: 1,
       latitude: 31.2990,
@@ -28,16 +30,17 @@ Page({
   },
 
   onLoad() {
-    // 获取当前位置
+    // 获取当前位置作为地图中心，但 marker 与导航始终使用门店坐标
     wx.getLocation({
       type: 'gcj02',
       success: (res) => {
         this.setData({
           latitude: res.latitude,
           longitude: res.longitude,
-          'markers[0].latitude': res.latitude,
-          'markers[0].longitude': res.longitude,
         })
+      },
+      fail: (err) => {
+        console.warn('获取当前位置失败', err)
       },
     })
   },
@@ -49,9 +52,10 @@ Page({
 
   /** 打开导航 */
   onNavigate() {
-    const { latitude, longitude, store } = this.data
+    const { storeLat, storeLng, store } = this.data
     wx.openLocation({
-      latitude, longitude,
+      latitude: storeLat,
+      longitude: storeLng,
       name: store.name,
       address: store.address,
       scale: 16,

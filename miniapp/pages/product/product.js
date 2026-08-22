@@ -7,6 +7,7 @@ Page({
     specs: [],
     selectedSpec: null,
     currentPrice: 0,
+    currentPriceText: '0.00',
     quantity: 1,
     totalPrice: '0.00',
     /** 响应式 */
@@ -38,7 +39,8 @@ Page({
       this.setData({
         product: data,
         specs,
-        currentPrice: Number(data.price).toFixed(2),
+        currentPrice: Number(data.price),
+        currentPriceText: Number(data.price).toFixed(2),
       }, () => this.calcTotal())
     })
       .catch(() => {})
@@ -49,7 +51,8 @@ Page({
     const spec = this.data.specs[index]
     this.setData({
       selectedSpec: index,
-      currentPrice: Number(spec.price).toFixed(2),
+      currentPrice: Number(spec.price),
+      currentPriceText: Number(spec.price).toFixed(2),
     })
     this.calcTotal()
   },
@@ -76,6 +79,10 @@ Page({
       return
     }
     const { product, specs, selectedSpec, quantity } = this.data
+    if (!product || !product.id) {
+      wx.showToast({ title: '商品信息加载中', icon: 'none' })
+      return
+    }
     const payload = { product: product.id, quantity }
     if (selectedSpec !== null && specs[selectedSpec]) {
       payload.spec = specs[selectedSpec].id

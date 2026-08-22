@@ -38,6 +38,12 @@
       <text class="menu-desc">查看可用优惠</text>
       <text class="menu-arrow">›</text>
     </view>
+    <view class="menu-item" bindtap="goStore">
+      <view class="menu-icon-box bg-blue">🏪</view>
+      <text class="menu-label">门店导航</text>
+      <text class="menu-desc">查看门店位置</text>
+      <text class="menu-arrow">›</text>
+    </view>
   </view>
 
   <!-- 退出 -->

@@ -48,6 +48,7 @@
 .bg-orange { background: #fff8f2; }
 .bg-brown { background: #fefaf6; }
 .bg-green { background: #f0f9eb; }
+.bg-blue { background: #e6f2ff; }
 .menu-label { font-size: 28rpx; font-weight: 600; color: #2c2416; }
 .menu-desc { flex: 1; font-size: 24rpx; color: #b0a59a; margin-left: 12rpx; }
 .menu-arrow { font-size: 36rpx; color: #e0d5c9; }

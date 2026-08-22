@@ -41,11 +41,16 @@ App({
       fontScale: deviceType === 'desktop' ? 1.1 : 1,
     }
 
-    // Token 恢复
+    // Token & userInfo 恢复
     const token = wx.getStorageSync('token')
+    const userInfo = wx.getStorageSync('userInfo')
     if (token) {
       this.globalData.token = token
+      if (userInfo) {
+        this.globalData.userInfo = userInfo
+      }
       this.checkLoginStatus()
+      this.fetchUserProfile()
     }
   },
 
@@ -96,7 +101,28 @@ App({
     })
   },
 
-  /** 检查 session_key 有效性 */
+  /** 拉取当前用户信息 */
+  fetchUserProfile() {
+    const token = this.globalData.token
+    if (!token) return
+    wx.request({
+      url: `${this.globalData.apiBase}/user/me/`,
+      method: 'GET',
+      header: { Authorization: `Bearer ${token}` },
+      success: (res) => {
+        const { data } = res
+        if (data && data.code === 0 && data.data) {
+          this.globalData.userInfo = data.data
+          wx.setStorageSync('userInfo', data.data)
+        }
+      },
+      fail: (err) => {
+        console.warn('拉取用户信息失败', err)
+      },
+    })
+  },
+
+  /** 检查 session_key 有效性，失效时清理登录态 */
   checkLoginStatus() {
     wx.checkSession({
       success: () => {},
@@ -104,6 +130,7 @@ App({
         this.globalData.token = ''
         this.globalData.userInfo = null
         wx.removeStorageSync('token')
+        wx.removeStorageSync('userInfo')
       },
     })
   },

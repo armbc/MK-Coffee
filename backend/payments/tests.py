@@ -404,4 +404,4 @@ class PaymentCallbackTest(TestCase):
         resp = APIClient().post(
             self.url, data="{}", content_type="application/json",
         )
-        self.assertEqual(resp.status_code, 500)
+        self.assertEqual(resp.status_code, 400)

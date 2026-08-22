@@ -22,9 +22,12 @@ echo "🚀 启动 Gunicorn..."
 # -- 确保 staticfiles 目录权限正确（Docker volume 初始为 root） --
 chown -R appuser:appuser /app/staticfiles 2>/dev/null || true
 
+# -- 根据 CPU 核心数动态设置 workers --
+WORKERS=$(expr 2 \* $(nproc) + 1)
+
 exec su -s /bin/bash appuser -c "gunicorn mkcoffee.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers 4 \
+    --workers ${WORKERS} \
     --access-logfile - \
     --error-logfile - \
     --log-level info"

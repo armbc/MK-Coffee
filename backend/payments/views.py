@@ -51,7 +51,7 @@ def payment_callback(request):
         logger.warning("收到支付回调但微信支付未配置")
         return Response(
             {"code": "FAIL", "message": "微信支付未配置"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     try:

@@ -51,4 +51,5 @@ Page({
   goOrders() { wx.switchTab({ url: '/pages/order/order' }) },
   goAddress() { wx.navigateTo({ url: '/pages/addresses/addresses' }) },
   goCoupons() { wx.navigateTo({ url: '/pages/coupons/coupons' }) },
+  goStore() { wx.navigateTo({ url: '/pages/store/store' }) },
 })

@@ -86,7 +86,7 @@ server {
         proxy_busy_buffers_size 32k;
     }
 
-    location /api/login/ {
+    location /api/auth/wx-login/ {
         limit_req zone=login_limit burst=3 nodelay;
         proxy_pass http://backend:8000;
         proxy_set_header Host              $host;

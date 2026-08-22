@@ -4,12 +4,17 @@
 import os
 from .base import *  # noqa: F401, F403
 
+def _split_hosts(value: str) -> list:
+    """按逗号拆分并过滤空字符串"""
+    return [h.strip() for h in (value or "").split(",") if h.strip()]
+
+
 DEBUG = False
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = _split_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", ""))
 
 # 生产环境 CORS 白名单
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOWED_ORIGINS = _split_hosts(os.getenv("CORS_ALLOWED_ORIGINS", ""))
 
 # ========== HTTPS / 安全 ==========
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

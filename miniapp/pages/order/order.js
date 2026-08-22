@@ -39,10 +39,24 @@ Page({
   },
 
   onShow() {
+    const token = getApp().globalData.token
+    if (!token) {
+      this.setData({ orders: [], filteredOrders: [], loading: false })
+      wx.showModal({
+        title: '请先登录',
+        content: '登录后才能查看订单',
+        confirmText: '去登录',
+        showCancel: false,
+        success: () => {
+          wx.switchTab({ url: '/pages/user/user' })
+        },
+      })
+      return
+    }
     // 从购物车下单后自动打开订单详情
     const newOrderId = app.globalData.newOrderId
+    app.globalData.newOrderId = null
     if (newOrderId && !this.data.detailOrder) {
-      app.globalData.newOrderId = null
       this.fetchDetail(newOrderId)
       return
     }
@@ -124,8 +138,13 @@ Page({
             wx.showToast({ title: '支付成功', icon: 'success' })
             this.fetchOrders()
           } else if (data.method === 'wechat_jsapi') {
+            const pp = data.pay_params || {}
             wx.requestPayment({
-              ...data.pay_params,
+              timeStamp: pp.timeStamp,
+              nonceStr: pp.nonceStr,
+              package: pp.package,
+              signType: pp.signType || 'RSA',
+              paySign: pp.paySign,
               success: () => {
                 wx.showToast({ title: '支付成功', icon: 'success' })
                 this.fetchOrders()

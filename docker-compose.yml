@@ -10,14 +10,15 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?err}
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-mkcoffee_root}"
       MYSQL_DATABASE: ${DB_NAME:-mkcoffee}
       MYSQL_USER: ${DB_USER:-mkcoffee}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?err}
+      MYSQL_PASSWORD: "${DB_PASSWORD:-mkcoffee}"
     volumes:
       - mysql_data:/var/lib/mysql
+    # 避免与宿主机已运行的 MySQL 3306 冲突；容器间通信不需要暴露端口
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:3307:3306"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -42,12 +43,20 @@ services:
     build: .
     env_file:
       - backend/.env
+    # 生产环境强制使用 production 配置，避免 dev 配置被意外加载
     environment:
+      - DJANGO_ENV=production
       - DB_HOST=db
       - DB_SOCKET=
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     volumes:
       - static_volume:/app/staticfiles
     restart: unless-stopped

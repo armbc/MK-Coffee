@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.db import transaction, IntegrityError
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from .models import Coupon, UserCoupon
@@ -13,7 +13,11 @@ from .serializers import CouponSerializer, UserCouponSerializer
 class CouponViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """优惠券列表（所有用户可查看） + 领取（需登录）"""
     serializer_class = CouponSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == "claim":
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
     def get_queryset(self):
         return Coupon.objects.filter(status="active").order_by("-created_at")

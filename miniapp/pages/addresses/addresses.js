@@ -11,6 +11,20 @@ Page({
   },
 
   onShow() {
+    const token = getApp().globalData.token
+    if (!token) {
+      this.setData({ addresses: [], loading: false })
+      wx.showModal({
+        title: '请先登录',
+        content: '登录后才能管理收货地址',
+        confirmText: '去登录',
+        showCancel: false,
+        success: () => {
+          wx.switchTab({ url: '/pages/user/user' })
+        },
+      })
+      return
+    }
     this.fetchList()
   },
 

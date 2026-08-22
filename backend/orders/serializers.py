@@ -100,5 +100,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.Serializer):
-    """下单请求 —— 从购物车生成订单"""
+    """下单请求 —— 从购物车生成订单（item_ids 可选，默认下单全部）"""
     remark = serializers.CharField(required=False, allow_blank=True, max_length=255, default="")
+    item_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        allow_empty=True,
+    )

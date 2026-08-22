@@ -265,6 +265,31 @@ class OrderAPITest(TestCase):
         # 两位商品：88*2 + 150*1 = 326
         self.assertEqual(float(order_data["total"]), 326.00)
 
+    def test_create_order_only_selected_items(self):
+        """只下单选中的购物车项，其余保留在购物车"""
+        self._fill_cart()
+        # 只选第一个购物车项（product，无 spec）
+        first = CartItem.objects.filter(user=self.user).order_by("id").first()
+        resp = self.client.post(
+            self.order_list_url,
+            {"item_ids": [first.id]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        order_data = resp.json()["data"]
+        self.assertEqual(len(order_data["items"]), 1)  # 只下单了 product
+        self.assertEqual(order_data["items"][0]["product_name"], self.product.name)
+        self.assertEqual(float(order_data["total"]), 176.00)  # 88*2
+        # 未选中的购物车项保留
+        remaining = CartItem.objects.filter(user=self.user)
+        self.assertEqual(remaining.count(), 1)
+        self.assertEqual(remaining.first().product, self.product2)
+        # 库存只扣了已下单的 product
+        self.product.refresh_from_db()
+        self.product2.refresh_from_db()
+        self.assertEqual(self.product.stock, 48)
+        self.assertEqual(self.product2.stock, 30)
+
     def test_create_order_clears_cart(self):
         self._fill_cart()
         self.client.post(self.order_list_url, {}, format="json")

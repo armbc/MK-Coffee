@@ -118,7 +118,7 @@ Page({
       content: `合计 ¥${this.data.total}，确认提交订单？`,
       success: (res) => {
         if (res.confirm) {
-          api.post('/orders/').then(data => {
+          api.post('/orders/', { item_ids: selected.map(i => i.id) }).then(data => {
             wx.showToast({ title: '下单成功', icon: 'success' })
             // order 是 tabBar 页面，switchTab 不支持传参
             // 通过 app 全局变量传递最新订单 ID

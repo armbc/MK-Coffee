@@ -145,10 +145,17 @@ class OrderViewSet(
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        """下单：从当前用户购物车创建订单"""
-        cart_items = CartItem.objects.filter(
+        """下单：从当前用户购物车创建订单（item_ids 可选，默认下单全部）"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item_ids = serializer.validated_data.get("item_ids")
+
+        qs = CartItem.objects.filter(
             user=request.user,
         ).select_related("product", "spec").select_for_update()
+        if item_ids:
+            qs = qs.filter(pk__in=item_ids)
+        cart_items = qs
 
         if not cart_items.exists():
             return Response(

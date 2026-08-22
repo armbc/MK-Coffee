@@ -52,7 +52,13 @@ Page({
   },
 
   onCategoryTap(e) {
-    const id = Number(e.currentTarget.dataset.id)
+    // 用 index 取值，避免鸿蒙上 dataset 数字类型兼容问题
+    const index = e.currentTarget.dataset.index
+    if (index === undefined) return
+    const cat = this.data.categories[index]
+    if (!cat) return
+    const id = Number(cat.id) || 0
+    console.log('[分类点击]', cat.name, 'id=', id)
     this.setData({ activeCategory: id })
     this.fetchProducts(id || null)
   },

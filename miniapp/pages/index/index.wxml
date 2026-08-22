@@ -9,11 +9,11 @@
 </swiper>
 
 <!-- 分类横滚条 -->
-<scroll-view class="category-bar" scroll-x enhanced show-scrollbar="{{false}}">
+<scroll-view class="category-bar" scroll-x show-scrollbar="{{false}}">
   <view class="category-bar-inner">
     <view class="category-item {{activeCategory === item.id ? 'active' : ''}}"
           wx:for="{{categories}}" wx:key="id"
-          data-id="{{item.id}}" bindtap="onCategoryTap">
+          data-index="{{index}}" catchtap="onCategoryTap">
       {{item.name}}
       <view wx:if="{{activeCategory === item.id}}" class="cat-dot"></view>
     </view>

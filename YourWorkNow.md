@@ -25,6 +25,9 @@
 | 14 | 商品图接入：8 张 750×750 占位图 + 前端渲染 + 后端 image URL | 8/22 |
 | 15 | `TESTING.md` 真机测试清单 | 8/22 |
 | 16 | 后端 84/84 测试通过；MySQL 已托管 systemd 用户服务并自启 | 8/22 |
+| 17 | 白名单配置（request/uploadFile/downloadFile = `api.mk-coffee.cn`）+ IP 白名单（`124.220.108.118`）生效 | 8/22 |
+| 18 | AppSecret 修复（占位符 → 真实密钥，腾服+本地同步，登录链路验证通过） | 8/22 |
+| 19 | 体验版 `0.9.0` 已上传并设为体验版；同事加入项目成员参与验收 | 8/22 |
 
 ---
 
@@ -42,30 +45,11 @@
 
 > ⚠️ **必须用 `.cn`**。`api.mk-coffee.com` 未备案、被运营商 SNI 阻断，填了真机也连不上。
 
-### 第二步：真机测试
+### 第二步：真机/体验版验收 🔄 进行中
 
-微信开发者工具 → 预览 → 手机扫码，按 **`TESTING.md`** 清单逐项勾选：
-
-- [ ] 登录（授权、登录态保持、退出）
-- [ ] 首页（轮播、分类、商品卡片带图）
-- [ ] 商品详情（大图、规格价格联动、加购）
-- [ ] 购物车（勾选、数量、删除、合并）
-- [ ] 下单 → 支付（模拟支付直接成功）
-- [ ] 订单（状态流转、取消恢复库存）
-- [ ] 优惠券（领取、我的券、重复领取拦截）
-- [ ] 收货地址（CRUD、默认地址、手机号校验）
-- [ ] 门店地图（坐标、导航）
-- [ ] 边界（未登录引导、弱网、连续点击）
-
-测试后跑数据核对（预期：用户 ≥1、订单/支付流水 = 测试下单数）：
-
-```bash
-ssh dserver 'ssh ubuntu@124.220.108.118 "cd ~/MK-Coffee && docker compose exec backend python manage.py shell -c \"
-from users.models import User; from orders.models import Order
-from payments.models import PaymentRecord
-print(User.objects.count(), Order.objects.count(), PaymentRecord.objects.count())
-\""'
-```
+- 开发者工具预览 + 体验版（0.9.0）双通道，按 **`TESTING.md`** 清单逐项勾选
+- 注意：Mac 本地代码务必 `git pull` 到最新（旧代码 apiBase 是 .com 会导致首页无商品）
+- 验收通过后：**清测试数据 → 过「提交审核前 Checklist」（TESTING.md 末尾）→ 提交审核**
 
 ### 第三步：申请微信支付商户号
 
@@ -74,7 +58,17 @@ print(User.objects.count(), Order.objects.count(), PaymentRecord.objects.count()
 
 ### 第四步：提交小程序审核
 
-小程序后台 → 版本管理 → 提交审核。审核前确认：商品图是真实图（非占位）、门店地址真实、无测试数据。
+按 **TESTING.md 末尾「提交审核前 Checklist」** 逐项过：
+
+1. 清理测试数据（保留种子商品）
+2. 商品图换真实图（至少 4 张主推）
+3. 确认门店真实坐标
+4. 配置《用户隐私保护指引》
+5. 选对服务类目（咖啡/食品销售类，可能需要资质）
+6. 「关于」页展示 ICP 备案号
+7. 版本号 `1.0.0` 提交
+
+后台 → 版本管理 → 提交审核。
 
 ### 第五步：公安联网备案 🔴（2026-09-21 前）
 

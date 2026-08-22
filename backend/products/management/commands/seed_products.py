@@ -27,6 +27,7 @@ class Command(BaseCommand):
         products_data = [
             {
                 "name": "埃塞俄比亚 耶加雪菲",
+                "image": "https://api.mk-coffee.cn/static/products/yirgacheffe.jpg",
                 "category": "袋装咖啡豆",
                 "description": "柑橘、茉莉花、蜂蜜风味，水洗处理",
                 "price": 88.00,
@@ -35,6 +36,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "哥伦比亚 蕙兰",
+                "image": "https://api.mk-coffee.cn/static/products/colombia.jpg",
                 "category": "袋装咖啡豆",
                 "description": "焦糖、坚果、巧克力风味，水洗处理",
                 "price": 78.00,
@@ -43,6 +45,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "巴西 喜拉多",
+                "image": "https://api.mk-coffee.cn/static/products/brazil.jpg",
                 "category": "罐装咖啡豆",
                 "description": "花生、奶油、可可风味，日晒处理",
                 "price": 68.00,
@@ -51,6 +54,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "印尼 曼特宁",
+                "image": "https://api.mk-coffee.cn/static/products/mandheling.jpg",
                 "category": "罐装咖啡豆",
                 "description": "草本、香料、黑巧克力风味，湿刨法",
                 "price": 75.00,
@@ -59,6 +63,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "定制拼配·深烘",
+                "image": "https://api.mk-coffee.cn/static/products/custom-dark.jpg",
                 "category": "定制烘焙咖啡豆",
                 "description": "根据您的口味定制烘焙程度，适合意式浓缩",
                 "price": 128.00,
@@ -67,6 +72,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "定制拼配·中烘",
+                "image": "https://api.mk-coffee.cn/static/products/custom-medium.jpg",
                 "category": "定制烘焙咖啡豆",
                 "description": "均衡口感，适合手冲和法压壶",
                 "price": 118.00,
@@ -75,6 +81,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "HARIO V60 滤杯",
+                "image": "https://api.mk-coffee.cn/static/products/v60.jpg",
                 "category": "咖啡器皿",
                 "description": "经典锥形滤杯，陶瓷材质，1-2人份",
                 "price": 128.00,
@@ -83,6 +90,7 @@ class Command(BaseCommand):
             },
             {
                 "name": "手冲壶·细嘴",
+                "image": "https://api.mk-coffee.cn/static/products/kettle.jpg",
                 "category": "咖啡器皿",
                 "description": "不锈钢细嘴手冲壶，600ml，精准控流",
                 "price": 168.00,
@@ -93,7 +101,7 @@ class Command(BaseCommand):
 
         for item in products_data:
             cat = cat_objs[item["category"]]
-            product, created = Product.objects.get_or_create(
+            product, created = Product.objects.update_or_create(
                 name=item["name"],
                 category=cat,
                 defaults={
@@ -101,6 +109,7 @@ class Command(BaseCommand):
                     "price": item["price"],
                     "stock": item["stock"],
                     "status": "on",
+                    "image": item.get("image", ""),
                 },
             )
             if created:
@@ -111,6 +120,6 @@ class Command(BaseCommand):
                         price=spec_price,
                         stock=spec_stock,
                     )
-            self.stdout.write(f"  {'✓' if created else '·'} 商品: {item['name']}")
+            self.stdout.write(f"  {'✓' if created else '↻'} 商品: {item['name']}")
 
         self.stdout.write(self.style.SUCCESS(f"\n种子数据完成: {Category.objects.count()} 分类, {Product.objects.count()} 商品"))

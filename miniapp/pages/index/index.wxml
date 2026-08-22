@@ -35,7 +35,8 @@
             style="width: calc((100% - {{(gridCols - 1) * cardGap}}rpx) / {{gridCols}});"
             data-id="{{item.id}}" bindtap="onProductTap">
         <view class="product-img-wrap">
-          <view class="product-img-placeholder">
+          <image wx:if="{{item.image}}" class="product-img" src="{{item.image}}" mode="aspectFill" lazy-load binderror="onImageError" data-index="{{index}}" />
+          <view wx:else class="product-img-placeholder">
             <text class="product-img-icon">☕</text>
           </view>
           <view class="product-badge" wx:if="{{item.stock <= 5 && item.stock > 0}}">限</view>

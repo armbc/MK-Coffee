@@ -30,6 +30,11 @@ Page({
     this.setData({ totalPrice: (this.data.currentPrice * this.data.quantity).toFixed(2) })
   },
 
+  /** 图片加载失败 → 回退占位图 */
+  onImageError() {
+    this.setData({ 'product.image': '' })
+  },
+
   fetchDetail(id) {
     api.get(`/products/${id}/`).then(data => {
       const specs = (data.specs || []).map(s => ({

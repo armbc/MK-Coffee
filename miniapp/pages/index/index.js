@@ -61,4 +61,11 @@ Page({
     const id = e.currentTarget.dataset.id
     wx.navigateTo({ url: `/pages/product/product?id=${id}` })
   },
+
+  /** 图片加载失败 → 该商品回退占位图 */
+  onImageError(e) {
+    const idx = e.currentTarget.dataset.index
+    if (idx === undefined) return
+    this.setData({ [`products[${idx}].image`]: '' })
+  },
 })

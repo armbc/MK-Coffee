@@ -2,7 +2,8 @@
   <view class="container" wx:if="{{product}}">
     <!-- 商品大图 -->
     <view class="product-image" style="height: {{imageHeight}}rpx;">
-      <text class="product-img-icon">☕</text>
+      <image wx:if="{{product.image}}" class="product-img" src="{{product.image}}" mode="aspectFill" binderror="onImageError" />
+      <text wx:else class="product-img-icon">☕</text>
     </view>
 
     <!-- 基本信息 -->

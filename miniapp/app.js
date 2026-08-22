@@ -58,7 +58,7 @@ App({
     token: '',
     refresh: '',
     userInfo: null,
-    apiBase: 'https://api.mk-coffee.com/api',
+    apiBase: 'https://api.mk-coffee.cn/api',
     device: null,
   },
 

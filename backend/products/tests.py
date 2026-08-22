@@ -50,6 +50,11 @@ class ProductAPITest(TestCase):
             name="曼特宁", category=self.cat, price=75.00, stock=30,
         )
         Spec.objects.create(product=self.p1, name="200g", price=88.00, stock=30)
+        # 第二个分类（用于验证过滤真正生效）
+        self.cat2 = Category.objects.create(name="罐装咖啡豆")
+        self.p3 = Product.objects.create(
+            name="巴西喜拉多", category=self.cat2, price=68.00, stock=60,
+        )
 
     def test_category_list(self):
         resp = self.client.get(reverse("category-list"))
@@ -64,13 +69,21 @@ class ProductAPITest(TestCase):
         resp = self.client.get(reverse("product-list"))
         self.assertEqual(resp.status_code, 200)
         results = resp.json()["data"]["results"]
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 3)
 
     def test_product_list_filter_by_category(self):
         resp = self.client.get(reverse("product-list") + f"?category={self.cat.id}")
         self.assertEqual(resp.status_code, 200)
         results = resp.json()["data"]["results"]
         self.assertEqual(len(results), 2)
+        self.assertTrue(all(p["category"] == self.cat.id for p in results))
+
+    def test_product_list_filter_by_category2(self):
+        resp = self.client.get(reverse("product-list") + f"?category={self.cat2.id}")
+        self.assertEqual(resp.status_code, 200)
+        results = resp.json()["data"]["results"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["name"], "巴西喜拉多")
 
     def test_product_detail(self):
         resp = self.client.get(reverse("product-detail", args=[self.p1.id]))
@@ -85,7 +98,7 @@ class ProductAPITest(TestCase):
         Product.objects.create(name="隐藏商品", category=self.cat, status="off")
         resp = self.client.get(reverse("product-list"))
         results = resp.json()["data"]["results"]
-        self.assertEqual(len(results), 2)  # 仍然是 2 个，隐藏的不出现
+        self.assertEqual(len(results), 3)  # 3 个上架商品，隐藏的不出现
 
     def test_product_detail_404(self):
         resp = self.client.get(reverse("product-detail", args=[9999]))

@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from orders.models import Order
 from .models import PaymentRecord
 from .wxpay import get_wxpay_client, WXPayError
+from mkcoffee.utils.notify import send_order_notify
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,9 @@ def payment_callback(request):
             logger.info(
                 f"支付回调处理成功: 订单 {out_trade_no}, 微信交易号 {transaction_id}"
             )
+
+            # 企业微信群通知（未配置 webhook 时静默跳过，不影响回调响应）
+            send_order_notify(order, event="paid")
 
     except Order.DoesNotExist:
         logger.error(f"订单不存在: {out_trade_no}")

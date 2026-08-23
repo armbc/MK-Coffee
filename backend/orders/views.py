@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from payments.models import PaymentRecord
 from payments.wxpay import get_wxpay_client, WXPayError
+from mkcoffee.utils.notify import send_order_notify
 
 logger = logging.getLogger(__name__)
 from products.models import Product, Spec
@@ -327,6 +328,9 @@ class OrderViewSet(
                     status="paid",
                     amount=order.total,
                 )
+
+                # 企业微信群通知（未配置 webhook 时静默跳过，不影响支付）
+                send_order_notify(order, event="paid")
 
                 return Response({
                     "code": 0,

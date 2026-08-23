@@ -424,3 +424,17 @@ class OrderAPITest(TestCase):
         resp = self.client.post(reverse("order-pay", args=[order_id]))
         self.assertEqual(resp.status_code, 400)
         self.assertIn("无法支付", resp.json()["msg"])
+
+    def test_pay_order_triggers_notify(self):
+        """模拟支付成功应触发企业微信订单通知（event=paid）"""
+        from unittest import mock
+        self._fill_cart()
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
+        order_id = create_resp.json()["data"]["id"]
+        with mock.patch("orders.views.send_order_notify") as m:
+            resp = self.client.post(reverse("order-pay", args=[order_id]))
+            self.assertEqual(resp.status_code, 200)
+            m.assert_called_once()
+            call = m.call_args
+            self.assertEqual(call.args[0].id, order_id)
+            self.assertEqual(call.kwargs.get("event"), "paid")

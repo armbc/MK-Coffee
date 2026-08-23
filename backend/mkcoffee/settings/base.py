@@ -173,4 +173,7 @@ WXPAY_API_V3_KEY = os.getenv("WXPAY_API_V3_KEY", "")
 WXPAY_SERIAL_NO = os.getenv("WXPAY_SERIAL_NO", "")
 WXPAY_PRIVATE_KEY = os.getenv("WXPAY_PRIVATE_KEY", "")
 WXPAY_NOTIFY_URL = os.getenv("WXPAY_NOTIFY_URL", "")
+
+# 企业微信群机器人 webhook（订单支付成功通知；留空则不推送）
+WECOM_WEBHOOK_URL = os.getenv("WECOM_WEBHOOK_URL", "")
 WXPAY_CERT_PATH = os.getenv("WXPAY_CERT_PATH", "")

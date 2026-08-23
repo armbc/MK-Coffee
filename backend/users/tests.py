@@ -116,6 +116,14 @@ class UserProfileAPITest(TestCase):
         self.assertEqual(data["data"]["nickname"], "个人信息用户")
         self.assertEqual(data["data"]["phone"], "13900139000")
 
+    def test_get_profile_me(self):
+        """GET /api/user/me/ 当前用户（小程序实际调用路径）"""
+        resp = self.client.get(reverse("user-me"))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["code"], 0)
+        self.assertEqual(data["data"]["nickname"], "个人信息用户")
+
     def test_update_profile(self):
         resp = self.client.put(self.url, {"nickname": "新昵称"}, format="json")
         self.assertEqual(resp.status_code, 200)

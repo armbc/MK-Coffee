@@ -103,9 +103,18 @@ class UserViewSet(
     def get_object(self):
         return self.request.user
 
-    @action(detail=False, methods=["post"], url_path="update")
+    @action(detail=False, methods=["get"], url_path="me")
+    def me(self, request):
+        """当前用户信息（GET /api/user/me/）"""
+        return Response({
+            "code": 0,
+            "data": UserSerializer(request.user).data,
+            "msg": "ok",
+        })
+
+    @action(detail=False, methods=["post"], url_path="me/update")
     def update_profile(self, request):
-        """更新昵称（POST 版本，兼容微信小程序）"""
+        """更新昵称（POST /api/user/me/update/）"""
         nickname = (request.data.get("nickname") or "").strip()
         if not nickname:
             return Response(
@@ -121,9 +130,9 @@ class UserViewSet(
             "msg": "ok",
         })
 
-    @action(detail=False, methods=["post"], url_path="avatar")
+    @action(detail=False, methods=["post"], url_path="me/avatar")
     def upload_avatar(self, request):
-        """上传头像：multipart 文件 → 存 media/avatars → 返回 URL"""
+        """上传头像（POST /api/user/me/avatar/）"""
         file = request.FILES.get("avatar")
         if not file:
             return Response(

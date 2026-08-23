@@ -113,22 +113,45 @@ Page({
       wx.showToast({ title: '请先选择商品', icon: 'none' })
       return
     }
-    wx.showModal({
-      title: '确认下单',
-      content: `合计 ¥${this.data.total}，确认提交订单？`,
-      success: (res) => {
-        if (res.confirm) {
-          api.post('/orders/', { item_ids: selected.map(i => i.id) }).then(data => {
-            wx.showToast({ title: '下单成功', icon: 'success' })
-            // order 是 tabBar 页面，switchTab 不支持传参
-            // 通过 app 全局变量传递最新订单 ID
-            app.globalData.newOrderId = data.id
-            setTimeout(() => {
-              wx.switchTab({ url: '/pages/order/order' })
-            }, 1000)
-          }).catch(() => {})
-        }
-      },
+    // 先获取默认收货地址
+    api.get('/addresses/').then(data => {
+      const list = data.results || data
+      const addr = list.find(a => a.is_default) || list[0]
+      if (!addr) {
+        wx.showModal({
+          title: '需要收货地址',
+          content: '下单需要收货地址，请先添加',
+          confirmText: '去添加',
+          cancelText: '暂不',
+          success: (res) => {
+            if (res.confirm) wx.navigateTo({ url: '/pages/addresses/addresses' })
+          },
+        })
+        return
+      }
+      const addrText = `${addr.province}${addr.city}${addr.district}${addr.detail}`
+      wx.showModal({
+        title: '确认下单',
+        content: `收货人：${addr.name} ${addr.phone}\n${addrText}\n\n合计 ¥${this.data.total}，确认提交订单？`,
+        success: (res) => {
+          if (res.confirm) {
+            api.post('/orders/', {
+              item_ids: selected.map(i => i.id),
+              address_id: addr.id,
+            }).then(data => {
+              wx.showToast({ title: '下单成功', icon: 'success' })
+              // order 是 tabBar 页面，switchTab 不支持传参
+              // 通过 app 全局变量传递最新订单 ID
+              app.globalData.newOrderId = data.id
+              setTimeout(() => {
+                wx.switchTab({ url: '/pages/order/order' })
+              }, 1000)
+            }).catch(() => {})
+          }
+        },
+      })
+    }).catch(() => {
+      wx.showToast({ title: '获取地址失败', icon: 'none' })
     })
   },
 })

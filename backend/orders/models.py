@@ -77,6 +77,10 @@ class Order(models.Model):
     status = models.CharField(
         max_length=16, choices=STATUS_CHOICES, default="pending", verbose_name="状态",
     )
+    # 收货地址快照 —— 下单时从 Address 复制，后续地址修改不影响历史订单
+    receiver_name = models.CharField(max_length=32, blank=True, default="", verbose_name="收货人")
+    receiver_phone = models.CharField(max_length=20, blank=True, default="", verbose_name="收货电话")
+    receiver_address = models.CharField(max_length=255, blank=True, default="", verbose_name="收货地址")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")

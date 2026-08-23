@@ -15,6 +15,7 @@ from payments.wxpay import get_wxpay_client, WXPayError
 
 logger = logging.getLogger(__name__)
 from products.models import Product, Spec
+from users.models import Address
 from .models import CartItem, Order, OrderItem
 from .serializers import (
     CartItemSerializer,
@@ -145,10 +146,21 @@ class OrderViewSet(
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        """下单：从当前用户购物车创建订单（item_ids 可选，默认下单全部）"""
+        """下单：从当前用户购物车创建订单（item_ids 可选，默认下单全部；address_id 必填）"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         item_ids = serializer.validated_data.get("item_ids")
+        address_id = serializer.validated_data.get("address_id")
+
+        # 收货地址：必须是当前用户的地址，快照到订单
+        address = Address.objects.filter(
+            id=address_id, user=request.user,
+        ).first()
+        if not address:
+            return Response(
+                {"code": 400, "data": None, "msg": "收货地址无效，请重新选择"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         qs = CartItem.objects.filter(
             user=request.user,
@@ -221,6 +233,11 @@ class OrderViewSet(
         order = Order.objects.create(
             user=request.user,
             total=total,
+            receiver_name=address.name,
+            receiver_phone=address.phone,
+            receiver_address=(
+                f"{address.province}{address.city}{address.district}{address.detail}"
+            ),
         )
 
         # 创建订单明细

@@ -123,7 +123,8 @@ Page({
 
   onPay(e) {
     const id = e.currentTarget.dataset.id
-    const order = this.data.orders.find(o => o.id === id) || {}
+    // 优先从列表找；详情页打开时列表可能为空，回退到 detailOrder
+    const order = this.data.orders.find(o => o.id === id) || this.data.detailOrder || {}
     const amount = order.total_text || '0.00'
 
     wx.showModal({

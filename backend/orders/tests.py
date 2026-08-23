@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.models import User
+from users.models import User, Address
 from products.models import Category, Product, Spec
 from orders.models import CartItem, Order, OrderItem
 
@@ -243,6 +243,11 @@ class OrderAPITest(TestCase):
         self.client = APIClient()
         refresh = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        # 默认收货地址（下单必填）
+        self.address = Address.objects.create(
+            user=self.user, name="张三", phone="13900139000",
+            province="江苏省", city="苏州市", district="工业园区", detail="星湖街328号",
+        )
         self.order_list_url = reverse("order-list")
 
     def _fill_cart(self):
@@ -254,7 +259,7 @@ class OrderAPITest(TestCase):
 
     def test_create_order_from_cart(self):
         self._fill_cart()
-        resp = self.client.post(self.order_list_url, {}, format="json")
+        resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data["code"], 0)
@@ -272,7 +277,7 @@ class OrderAPITest(TestCase):
         first = CartItem.objects.filter(user=self.user).order_by("id").first()
         resp = self.client.post(
             self.order_list_url,
-            {"item_ids": [first.id]},
+            {"item_ids": [first.id], "address_id": self.address.id},
             format="json",
         )
         self.assertEqual(resp.status_code, 201)
@@ -292,12 +297,12 @@ class OrderAPITest(TestCase):
 
     def test_create_order_clears_cart(self):
         self._fill_cart()
-        self.client.post(self.order_list_url, {}, format="json")
+        self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.assertEqual(CartItem.objects.filter(user=self.user).count(), 0)
 
     def test_create_order_deducts_stock(self):
         self._fill_cart()
-        self.client.post(self.order_list_url, {}, format="json")
+        self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.product.refresh_from_db()
         self.product2.refresh_from_db()
         self.spec2.refresh_from_db()
@@ -305,13 +310,13 @@ class OrderAPITest(TestCase):
         self.assertEqual(self.spec2.stock, 4)       # 5 - 1
 
     def test_create_order_empty_cart(self):
-        resp = self.client.post(self.order_list_url, {}, format="json")
+        resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.assertEqual(resp.status_code, 400)
         self.assertIn("购物车为空", resp.json()["msg"])
 
     def test_create_order_insufficient_stock(self):
         CartItem.objects.create(user=self.user, product=self.product, quantity=100)
-        resp = self.client.post(self.order_list_url, {}, format="json")
+        resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.assertEqual(resp.status_code, 400)
         self.assertIn("库存不足", resp.json()["msg"])
 
@@ -319,7 +324,7 @@ class OrderAPITest(TestCase):
         self.product.status = "off"
         self.product.save()
         CartItem.objects.create(user=self.user, product=self.product, quantity=1)
-        resp = self.client.post(self.order_list_url, {}, format="json")
+        resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         self.assertEqual(resp.status_code, 400)
         self.assertIn("已下架", resp.json()["msg"])
 
@@ -327,7 +332,7 @@ class OrderAPITest(TestCase):
 
     def test_order_list(self):
         self._fill_cart()
-        self.client.post(self.order_list_url, {}, format="json")
+        self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         resp = self.client.get(self.order_list_url)
         self.assertEqual(resp.status_code, 200)
         results = resp.json()["data"]["results"]
@@ -352,7 +357,7 @@ class OrderAPITest(TestCase):
 
     def test_order_detail(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         url = reverse("order-detail", args=[order_id])
         resp = self.client.get(url)
@@ -368,7 +373,7 @@ class OrderAPITest(TestCase):
 
     def test_cancel_order(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         url = reverse("order-cancel", args=[order_id])
         resp = self.client.post(url)
@@ -377,7 +382,7 @@ class OrderAPITest(TestCase):
 
     def test_cancel_restores_stock(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         self.client.post(reverse("order-cancel", args=[order_id]))
         self.product.refresh_from_db()
@@ -387,7 +392,7 @@ class OrderAPITest(TestCase):
 
     def test_cannot_cancel_non_pending(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         # 先支付
         self.client.post(reverse("order-pay", args=[order_id]))
@@ -400,7 +405,7 @@ class OrderAPITest(TestCase):
 
     def test_pay_order(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         url = reverse("order-pay", args=[order_id])
         resp = self.client.post(url)
@@ -411,7 +416,7 @@ class OrderAPITest(TestCase):
 
     def test_cannot_pay_non_pending(self):
         self._fill_cart()
-        create_resp = self.client.post(self.order_list_url, {}, format="json")
+        create_resp = self.client.post(self.order_list_url, {"address_id": self.address.id}, format="json")
         order_id = create_resp.json()["data"]["id"]
         # 先支付
         self.client.post(reverse("order-pay", args=[order_id]))

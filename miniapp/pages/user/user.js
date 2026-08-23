@@ -1,3 +1,4 @@
+import api from '../../utils/api'
 const app = getApp()
 const swipe = require('../../utils/swipe-tab').bind('/pages/user/user')
 

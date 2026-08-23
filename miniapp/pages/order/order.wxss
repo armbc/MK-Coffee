@@ -69,3 +69,10 @@
   flex: 1; text-align: center; padding: 20rpx 0;
   background: #fff; color: #b0a59a; border: 1rpx solid #e0d5c9; border-radius: 40rpx; font-size: 28rpx;
 }
+
+/* 订单优惠信息 */
+.detail-coupon {
+  font-size: 24rpx;
+  color: #e8873a;
+  margin-top: 8rpx;
+}

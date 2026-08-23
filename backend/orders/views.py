@@ -1,10 +1,12 @@
 """订单模块 · 视图"""
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +15,7 @@ from rest_framework.response import Response
 from payments.models import PaymentRecord
 from payments.wxpay import get_wxpay_client, WXPayError
 from mkcoffee.utils.notify import send_order_notify
+from coupons.models import UserCoupon
 
 logger = logging.getLogger(__name__)
 from products.models import Product, Spec
@@ -230,10 +233,60 @@ class OrderViewSet(
                 "quantity": quantity,
             })
 
+        # ---- 优惠券（可选，下单即核销，取消订单自动释放）----
+        coupon_discount = Decimal("0.00")
+        user_coupon = None
+        coupon_id = serializer.validated_data.get("coupon_id")
+        if coupon_id:
+            user_coupon = (
+                UserCoupon.objects.select_for_update()
+                .select_related("coupon")
+                .filter(id=coupon_id, user=request.user)
+                .first()
+            )
+            if not user_coupon:
+                return Response(
+                    {"code": 400, "data": None, "msg": "优惠券不存在或不属于当前用户"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            coupon = user_coupon.coupon
+            now = timezone.now()
+            if user_coupon.status != "unused":
+                return Response(
+                    {"code": 400, "data": None, "msg": "该优惠券已使用，无法重复抵扣"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if coupon.status != "active":
+                return Response(
+                    {"code": 400, "data": None, "msg": "优惠券已停用"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if now < coupon.start_date or now > coupon.end_date:
+                return Response(
+                    {"code": 400, "data": None, "msg": "优惠券不在有效期内"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if total < coupon.min_amount:
+                return Response(
+                    {"code": 400, "data": None,
+                     "msg": f"订单金额未达优惠门槛（满 ¥{coupon.min_amount} 可用）"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if coupon.type == "full_reduce":
+                # 满减：抵扣 = min(券值, 订单总额)，防止超扣
+                coupon_discount = min(coupon.value, total)
+            elif coupon.type == "discount":
+                # 折扣：value 为折数（如 8 = 8折）
+                payable = (total * coupon.value / Decimal("10")).quantize(
+                    Decimal("0.01"), ROUND_HALF_UP,
+                )
+                coupon_discount = total - payable
+
         # 创建订单
         order = Order.objects.create(
             user=request.user,
             total=total,
+            coupon_discount=coupon_discount,
             receiver_name=address.name,
             receiver_phone=address.phone,
             receiver_address=(
@@ -244,6 +297,13 @@ class OrderViewSet(
         # 创建订单明细
         for item_data in order_items_data:
             OrderItem.objects.create(order=order, **item_data)
+
+        # 核销优惠券（下单即核销；取消订单时自动释放）
+        if user_coupon:
+            user_coupon.status = "used"
+            user_coupon.used_at = timezone.now()
+            user_coupon.order = order
+            user_coupon.save(update_fields=["status", "used_at", "order"])
 
         # 原子扣减库存（F表达式，避免竞态）
         for item_data in order_items_data:
@@ -283,6 +343,11 @@ class OrderViewSet(
 
             order.status = "cancelled"
             order.save(update_fields=["status", "updated_at"])
+
+            # 释放优惠券（本单核销的券退回，可再次使用）
+            UserCoupon.objects.filter(order=order, status="used").update(
+                status="unused", order=None, used_at=None,
+            )
 
             # 原子恢复库存（F表达式，避免竞态）
             for item in order.items.select_related("spec", "product"):
@@ -326,7 +391,7 @@ class OrderViewSet(
                     user=request.user,
                     method="mock",
                     status="paid",
-                    amount=order.total,
+                    amount=order.payable,
                 )
 
                 # 企业微信群通知（未配置 webhook 时静默跳过，不影响支付）
@@ -353,7 +418,7 @@ class OrderViewSet(
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
-            amount_fen = int(order.total * 100)
+            amount_fen = int(order.payable * 100)
             description = f"迈科咖啡-{order.order_no[:8]}"
 
             try:
@@ -376,7 +441,7 @@ class OrderViewSet(
                 order=order,
                 user=request.user,
                 method="wechat_jsapi",
-                amount=order.total,
+                amount=order.payable,
                 prepay_id=prepay_id,
             )
 

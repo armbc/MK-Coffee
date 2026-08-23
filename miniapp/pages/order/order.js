@@ -72,7 +72,10 @@ Page({
     this.setData({ loading: true })
     api.get('/orders/').then(data => {
       const orders = (data.results || data).map(o => ({
-        ...o, total_text: Number(o.total).toFixed(2),
+        ...o,
+        total_text: Number(o.total).toFixed(2),
+        payable_text: Number(o.payable !== undefined && o.payable !== null ? o.payable : o.total).toFixed(2),
+        discount_text: o.coupon_discount > 0 ? `-¥${Number(o.coupon_discount).toFixed(2)}` : '',
         status_info: STATUS_MAP[o.status] || {},
       }))
       this.setData({ orders, loading: false }, () => this.applyFilter())
@@ -83,7 +86,10 @@ Page({
   fetchDetail(id) {
     api.get(`/orders/${id}/`).then(data => {
       const detail = {
-        ...data, total_text: Number(data.total).toFixed(2),
+        ...data,
+        total_text: Number(data.total).toFixed(2),
+        payable_text: Number(data.payable !== undefined && data.payable !== null ? data.payable : data.total).toFixed(2),
+        discount_text: data.coupon_discount > 0 ? `-¥${Number(data.coupon_discount).toFixed(2)}` : '',
         status_info: STATUS_MAP[data.status] || {},
         items: (data.items || []).map(it => ({
           ...it, price_text: Number(it.price).toFixed(2),
@@ -125,11 +131,12 @@ Page({
     const id = e.currentTarget.dataset.id
     // 优先从列表找；详情页打开时列表可能为空，回退到 detailOrder
     const order = this.data.orders.find(o => o.id === id) || this.data.detailOrder || {}
-    const amount = order.total_text || '0.00'
+    const amount = order.payable_text || '0.00'
+    const discountLine = order.discount_text ? `\n优惠券：${order.discount_text}` : ''
 
     wx.showModal({
       title: '确认支付',
-      content: `订单金额 ¥${amount}，确认支付？`,
+      content: `订单金额 ¥${amount}${discountLine}，确认支付？`,
       success: (res) => {
         if (!res.confirm) return
 

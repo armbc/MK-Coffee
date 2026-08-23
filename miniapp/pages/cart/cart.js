@@ -10,12 +10,59 @@ Page({
     total: '0.00',
     loading: true,
     maxWidth: 0,
+    coupons: [],
+    selectedCoupon: null,
+    couponDiscount: '0.00',
+    payable: '0.00',
   },
 
   onShow() {
     const dev = app.globalData.device
     if (dev) this.setData({ maxWidth: dev.maxWidth || 0 })
     this.fetchCart()
+    this.fetchCoupons()
+  },
+
+  /** 拉取当前用户可用优惠券（未使用且未过期） */
+  fetchCoupons() {
+    api.get('/my-coupons/').then(data => {
+      const list = data.results || data
+      const now = Date.now()
+      const usable = (list || []).filter(c =>
+        c.status === 'unused' && new Date(c.end_date).getTime() > now)
+      this.setData({ coupons: usable })
+    }).catch(() => {})
+  },
+
+  /** 选择优惠券 */
+  onCouponTap() {
+    const coupons = this.data.coupons
+    if (!coupons.length) {
+      wx.showToast({ title: '暂无可用优惠券', icon: 'none' })
+      return
+    }
+    const itemList = ['不使用优惠券', ...coupons.map(c =>
+      `${c.coupon_value_text}（满${Number(c.coupon_min_amount).toFixed(0)}可用）`)]
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this._setCoupon(null)
+          return
+        }
+        const coupon = coupons[res.tapIndex - 1]
+        const total = Number(this.data.total)
+        if (total < Number(coupon.coupon_min_amount)) {
+          wx.showToast({ title: `未达门槛（满${coupon.coupon_min_amount}可用）`, icon: 'none' })
+          return
+        }
+        this._setCoupon(coupon)
+      },
+    })
+  },
+
+  _setCoupon(coupon) {
+    this.setData({ selectedCoupon: coupon }, () => this._recalc())
   },
 
   fetchCart() {
@@ -76,7 +123,30 @@ Page({
     const items = this.data.items
     let sum = 0, all = items.length > 0
     for (const i of items) { if (i.isSelected) sum += Number(i.subtotal); else all = false }
-    this.setData({ total: sum.toFixed(2), allSelected: all })
+    const total = sum.toFixed(2)
+
+    // 优惠券抵扣：金额变化后若不再满足门槛，自动取消已选券
+    let coupon = this.data.selectedCoupon
+    let discount = 0
+    if (coupon) {
+      if (Number(total) >= Number(coupon.coupon_min_amount)) {
+        if (coupon.coupon_type === 'full_reduce') {
+          discount = Math.min(Number(coupon.coupon_value), Number(total))
+        } else if (coupon.coupon_type === 'discount') {
+          discount = Number(total) - Number((Number(total) * Number(coupon.coupon_value) / 10).toFixed(2))
+        }
+      } else {
+        coupon = null
+      }
+    }
+    const payable = (Number(total) - discount).toFixed(2)
+    this.setData({
+      total,
+      allSelected: all,
+      selectedCoupon: coupon,
+      couponDiscount: discount.toFixed(2),
+      payable,
+    })
   },
 
   onQuantityChange(e) {
@@ -130,14 +200,17 @@ Page({
         return
       }
       const addrText = `${addr.province}${addr.city}${addr.district}${addr.detail}`
+      const coupon = this.data.selectedCoupon
+      const discountText = coupon ? `\n优惠券：-¥${this.data.couponDiscount}（${coupon.coupon_value_text}）` : ''
       wx.showModal({
         title: '确认下单',
-        content: `收货人：${addr.name} ${addr.phone}\n${addrText}\n\n合计 ¥${this.data.total}，确认提交订单？`,
+        content: `收货人：${addr.name} ${addr.phone}\n${addrText}${discountText}\n\n应付 ¥${this.data.payable}，确认提交订单？`,
         success: (res) => {
           if (res.confirm) {
             api.post('/orders/', {
               item_ids: selected.map(i => i.id),
               address_id: addr.id,
+              coupon_id: coupon ? coupon.id : null,
             }).then(data => {
               wx.showToast({ title: '下单成功', icon: 'success' })
               // order 是 tabBar 页面，switchTab 不支持传参

@@ -16,7 +16,8 @@
     </view>
   </view>
   <view class="detail-summary">
-    <view class="detail-total"><text>合计</text><text class="total-amount">¥{{detailOrder.total_text}}</text></view>
+    <view class="detail-total"><text>应付</text><text class="total-amount">¥{{detailOrder.payable_text}}</text></view>
+    <view class="detail-coupon" wx:if="{{detailOrder.discount_text}}">优惠券 {{detailOrder.discount_text}}（{{detailOrder.coupon_name}}）</view>
     <view class="detail-time">下单时间：{{detailOrder.created_at}}</view>
   </view>
   <view class="detail-actions">
@@ -46,7 +47,7 @@
         <view class="card-body" bindtap="onDetail" data-id="{{item.id}}">
           <view class="card-info">
             <text class="card-count">共 {{item.item_count}} 件商品</text>
-            <text class="card-total">¥{{item.total_text}}</text>
+            <text class="card-total">¥{{item.payable_text}}</text>
           </view>
           <view class="card-time">{{item.created_at}}</view>
         </view>

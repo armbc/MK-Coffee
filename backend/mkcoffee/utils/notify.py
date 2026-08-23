@@ -32,8 +32,10 @@ def send_order_notify(order, event="paid"):
     lines = [
         f"**【{head}】**",
         f"订单号：`{order.order_no}`",
-        f"金额：**¥{order.total}**",
+        f"实付金额：**¥{order.payable}**",
     ]
+    if order.coupon_discount:
+        lines.append(f"优惠券：-¥{order.coupon_discount}（{order.coupon_name}）")
     receiver = order.receiver_name or "-"
     phone = order.receiver_phone or "-"
     address = order.receiver_address or "（未填）"

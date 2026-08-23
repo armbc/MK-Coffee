@@ -73,7 +73,11 @@ class Order(models.Model):
     order_no = models.CharField(
         max_length=36, unique=True, default="", verbose_name="订单编号",
     )
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="订单金额")
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="商品总额")
+    coupon_discount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00"),
+        verbose_name="优惠券抵扣",
+    )
     status = models.CharField(
         max_length=16, choices=STATUS_CHOICES, default="pending", verbose_name="状态",
     )
@@ -95,6 +99,17 @@ class Order(models.Model):
         if not self.order_no:
             self.order_no = uuid.uuid4().hex
         super().save(*args, **kwargs)
+
+    @property
+    def payable(self):
+        """应付金额 = 商品总额 - 优惠券抵扣（支付/回调以此为准）"""
+        return self.total - self.coupon_discount
+
+    @property
+    def coupon_name(self):
+        """本单使用的优惠券名称（未用券则为空）"""
+        uc = self.used_coupon.first()
+        return uc.coupon.name if uc else ""
 
     def __str__(self):
         return f"订单 {self.order_no}"

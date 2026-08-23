@@ -67,6 +67,12 @@ class UserCouponViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # 惰性修复：把已过期未使用的券标记为 expired（遗留问题 #5）
+        UserCoupon.objects.filter(
+            user=self.request.user,
+            status="unused",
+            coupon__end_date__lt=timezone.now(),
+        ).update(status="expired")
         return UserCoupon.objects.filter(
             user=self.request.user,
         ).select_related("coupon").order_by("-created_at")

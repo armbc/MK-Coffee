@@ -1,7 +1,7 @@
 /* ===== 购物车页面 ===== */
 .cart-page {
   min-height: 100vh;
-  padding-bottom: 120rpx;
+  padding-bottom: 240rpx;
 }
 
 /* ===== 条目 ===== */
@@ -97,3 +97,25 @@
   font-size: 28rpx; font-weight: 700;
 }
 .btn-submit.disabled { background: #e0d5c9; color: #fff; }
+/* 优惠券选择行 */
+.coupon-row {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 108rpx;
+  display: flex; align-items: center;
+  padding: 18rpx 24rpx;
+  background: #fffdf8;
+  border-top: 1rpx solid #f5efe6;
+  z-index: 9;
+}
+.coupon-label { font-size: 26rpx; color: #6b5a4d; margin-right: 16rpx; }
+.coupon-value { flex: 1; font-size: 26rpx; color: #b8a99b; text-align: right; }
+.coupon-value.active { color: #e8873a; font-weight: 700; }
+.coupon-arrow { color: #c9bdb0; margin-left: 8rpx; font-size: 28rpx; }
+
+/* 应付金额与划线原价 */
+.total-origin {
+  font-size: 22rpx; color: #b8a99b;
+  text-decoration: line-through;
+  margin-left: 10rpx;
+}

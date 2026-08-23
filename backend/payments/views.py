@@ -122,7 +122,7 @@ def payment_callback(request):
                 paid_fen = int((decrypted.get("amount") or {}).get("total"))
             except (TypeError, ValueError):
                 paid_fen = None
-            expected_fen = int(order.total * 100)
+            expected_fen = int(order.payable * 100)
             if paid_fen != expected_fen:
                 logger.error(
                     "回调金额不一致: 订单 %s 应收 %s 分，实收 %s 分",

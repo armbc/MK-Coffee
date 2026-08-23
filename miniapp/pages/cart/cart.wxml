@@ -31,6 +31,13 @@
   </view>
 </view>
 
+<!-- 优惠券选择行 -->
+<view class="coupon-row safe-bottom-pad" wx:if="{{items.length > 0}}" bindtap="onCouponTap">
+  <text class="coupon-label">优惠券</text>
+  <text class="coupon-value {{selectedCoupon ? 'active' : ''}}">{{selectedCoupon ? '-' + couponDiscount + '元' : '选择优惠券'}}</text>
+  <text class="coupon-arrow">›</text>
+</view>
+
 <!-- 底部结算栏 -->
 <view class="bottom-bar safe-bottom" wx:if="{{items.length > 0}}">
   <view class="bottom-check" bindtap="onToggleAll">
@@ -38,8 +45,9 @@
     <text class="all-label">全选</text>
   </view>
   <view class="bottom-total">
-    <text class="total-label">合计：</text>
-    <text class="total-price">¥{{total}}</text>
+    <text class="total-label">应付：</text>
+    <text class="total-price">¥{{payable}}</text>
+    <text class="total-origin" wx:if="{{couponDiscount > 0}}">原价 ¥{{total}}</text>
   </view>
-  <view class="btn-submit {{total <= 0 ? 'disabled' : ''}}" bindtap="createOrder">下单</view>
+  <view class="btn-submit {{payable <= 0 ? 'disabled' : ''}}" bindtap="createOrder">下单</view>
 </view>

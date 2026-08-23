@@ -438,3 +438,163 @@ class OrderAPITest(TestCase):
             call = m.call_args
             self.assertEqual(call.args[0].id, order_id)
             self.assertEqual(call.kwargs.get("event"), "paid")
+
+    # ---- 优惠券下单 ----
+
+    def _make_coupon(self, ctype="full_reduce", value=20, min_amount=300):
+        from datetime import timedelta
+        from django.utils import timezone
+        from coupons.models import Coupon
+        now = timezone.now()
+        return Coupon.objects.create(
+            name=f"测试券{ctype}{value}", type=ctype, value=value,
+            min_amount=min_amount, stock=100,
+            start_date=now - timedelta(days=1),
+            end_date=now + timedelta(days=7),
+            status="active",
+        )
+
+    def test_order_with_full_reduce_coupon(self):
+        """满减券：总额326满300减20，实付306"""
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        coupon = self._make_coupon("full_reduce", value=20, min_amount=300)
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        d = resp.json()["data"]
+        self.assertEqual(float(d["total"]), 326.00)
+        self.assertEqual(float(d["coupon_discount"]), 20.00)
+        self.assertEqual(float(d["payable"]), 306.00)
+        self.assertEqual(d["coupon_name"], coupon.name)
+        # 下单即核销
+        uc.refresh_from_db()
+        self.assertEqual(uc.status, "used")
+        self.assertIsNotNone(uc.order)
+
+    def test_order_with_discount_coupon(self):
+        """折扣券：8折 326 -> 实付260.80"""
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        coupon = self._make_coupon("discount", value=8, min_amount=0)
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        d = resp.json()["data"]
+        self.assertEqual(float(d["payable"]), 260.80)
+        self.assertEqual(float(d["coupon_discount"]), 65.20)
+
+    def test_order_coupon_min_amount_not_met(self):
+        """未达满减门槛：min_amount=500 > 326 → 拒绝"""
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        coupon = self._make_coupon("full_reduce", value=20, min_amount=500)
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("未达优惠门槛", resp.json()["msg"])
+
+    def test_order_coupon_expired(self):
+        """过期券拒绝使用"""
+        from datetime import timedelta
+        from django.utils import timezone
+        from coupons.models import Coupon, UserCoupon
+        self._fill_cart()
+        now = timezone.now()
+        expired = Coupon.objects.create(
+            name="已过期", type="full_reduce", value=10, min_amount=0, stock=100,
+            start_date=now - timedelta(days=30), end_date=now - timedelta(days=1),
+            status="active",
+        )
+        uc = UserCoupon.objects.create(user=self.user, coupon=expired)
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("不在有效期内", resp.json()["msg"])
+
+    def test_order_coupon_already_used(self):
+        """已核销的券不能重复使用"""
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        coupon = self._make_coupon()
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon, status="used")
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("已使用", resp.json()["msg"])
+
+    def test_order_coupon_other_user(self):
+        """别人的券不能用"""
+        from users.models import User as U
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        other = U.objects.create(openid="other_coupon_user")
+        coupon = self._make_coupon()
+        uc = UserCoupon.objects.create(user=other, coupon=coupon)
+        resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("不存在或不属于", resp.json()["msg"])
+
+    def test_cancel_order_releases_coupon(self):
+        """取消订单自动释放优惠券（恢复 unused，可再次使用）"""
+        from coupons.models import UserCoupon
+        self._fill_cart()
+        coupon = self._make_coupon()
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        create_resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        order_id = create_resp.json()["data"]["id"]
+        self.assertEqual(UserCoupon.objects.get(pk=uc.pk).status, "used")
+        # 取消订单
+        resp = self.client.post(reverse("order-cancel", args=[order_id]))
+        self.assertEqual(resp.status_code, 200)
+        uc.refresh_from_db()
+        self.assertEqual(uc.status, "unused")
+        self.assertIsNone(uc.order)
+        self.assertIsNone(uc.used_at)
+
+    def test_pay_with_coupon_amount_is_payable(self):
+        """用券后支付金额 = 应付金额（payable）"""
+        from coupons.models import UserCoupon
+        from payments.models import PaymentRecord
+        self._fill_cart()
+        coupon = self._make_coupon("full_reduce", value=20, min_amount=300)
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        create_resp = self.client.post(
+            self.order_list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        order_id = create_resp.json()["data"]["id"]
+        resp = self.client.post(reverse("order-pay", args=[order_id]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["data"]["order"]["status"], "paid")
+        order = Order.objects.get(pk=order_id)
+        self.assertEqual(float(order.payable), 306.00)
+        rec = PaymentRecord.objects.get(order=order, method="mock")
+        self.assertEqual(float(rec.amount), 306.00)

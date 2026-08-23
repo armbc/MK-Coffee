@@ -73,12 +73,15 @@ class OrderListSerializer(serializers.ModelSerializer):
     """订单列表（不含明细）"""
     item_count = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    payable = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    coupon_discount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    coupon_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Order
         fields = [
-            "id", "order_no", "total", "status", "status_display",
-            "item_count", "created_at",
+            "id", "order_no", "total", "coupon_discount", "payable", "coupon_name",
+            "status", "status_display", "item_count", "created_at",
         ]
 
     def get_item_count(self, obj):
@@ -90,17 +93,20 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     """订单详情（含明细）"""
     items = OrderItemSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    payable = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    coupon_discount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    coupon_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Order
         fields = [
-            "id", "order_no", "total", "status", "status_display",
-            "items", "created_at", "updated_at",
+            "id", "order_no", "total", "coupon_discount", "payable", "coupon_name",
+            "status", "status_display", "items", "created_at", "updated_at",
         ]
 
 
 class OrderCreateSerializer(serializers.Serializer):
-    """下单请求 —— 从购物车生成订单（item_ids 可选，默认下单全部；address_id 必填）"""
+    """下单请求 —— 从购物车生成订单（item_ids 可选，默认下单全部；address_id 必填；coupon_id 可选）"""
     remark = serializers.CharField(required=False, allow_blank=True, max_length=255, default="")
     item_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
@@ -108,3 +114,7 @@ class OrderCreateSerializer(serializers.Serializer):
         allow_empty=True,
     )
     address_id = serializers.IntegerField(required=True, help_text="收货地址 ID")
+    coupon_id = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text="用户优惠券 ID（UserCoupon.id），下单即核销，取消订单自动释放",
+    )

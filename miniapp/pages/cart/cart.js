@@ -73,11 +73,13 @@ Page({
     }
     api.get('/cart/').then(data => {
       const oldItems = this.data.items
+      const firstLoad = oldItems.length === 0
       const items = (data.results || data).map(item => ({
         ...item,
         unit_price_text: Number(item.unit_price).toFixed(2),
         subtotal_text: Number(item.subtotal).toFixed(2),
-        isSelected: this._wasSelected(oldItems, item.id),
+        // 首次进入默认全选（避免“有商品但应付 0.00”的困惑）；之后记忆勾选状态
+        isSelected: firstLoad ? true : this._wasSelected(oldItems, item.id),
       }))
       const allSelected = items.length > 0 && items.every(i => i.isSelected)
       this.setData({ items, loading: false, allSelected }, () => this._recalc())
@@ -105,7 +107,8 @@ Page({
       if ((j === idx ? newVal : items[j].isSelected)) sum += Number(items[j].subtotal)
     }
     upd.total = sum.toFixed(2)
-    this.setData(upd)
+    // 勾选变化后必须重算 payable（应付=原价-优惠），否则底部金额不刷新
+    this.setData(upd, () => this._recalc())
   },
 
   onToggleAll() {
@@ -116,7 +119,8 @@ Page({
     for (let j = 0; j < items.length; j++) upd[`items[${j}].isSelected`] = newVal
     upd.allSelected = newVal && items.length > 0
     upd.total = newVal ? items.reduce((s, i) => s + Number(i.subtotal), 0).toFixed(2) : '0.00'
-    this.setData(upd)
+    // 全选/取消全选后同步重算应付金额
+    this.setData(upd, () => this._recalc())
   },
 
   _recalc() {

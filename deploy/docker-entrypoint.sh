@@ -21,6 +21,9 @@ echo "🚀 启动 Gunicorn..."
 
 # -- 确保 staticfiles 目录权限正确（Docker volume 初始为 root） --
 chown -R appuser:appuser /app/staticfiles 2>/dev/null || true
+# -- media 目录（用户上传头像等），volume 初始为 root，必须授权给 appuser --
+mkdir -p /app/media
+chown -R appuser:appuser /app/media 2>/dev/null || true
 
 # -- 根据 CPU 核心数动态设置 workers --
 WORKERS=$(expr 2 \* $(nproc) + 1)

@@ -13,6 +13,7 @@ class Command(BaseCommand):
             "罐装咖啡豆": {"sort": 2, "icon": "🫙"},
             "定制烘焙咖啡豆": {"sort": 3, "icon": "🔥"},
             "咖啡器皿": {"sort": 4, "icon": "🫖"},
+            "挂耳咖啡": {"sort": 5, "icon": "🫘"},
         }
         cat_objs = {}
         for name, attrs in categories.items():
@@ -96,6 +97,43 @@ class Command(BaseCommand):
                 "price": 168.00,
                 "stock": 10,
                 "specs": [("600ml", 168.00, 10)],
+            },
+            # === 挂耳咖啡（占位，信息待补充）===
+            {
+                "name": "挂耳咖啡 1",
+                "image": "",
+                "category": "挂耳咖啡",
+                "description": "商品信息待补充",
+                "price": 39.00,
+                "stock": 10,
+                "specs": [("10袋装", 39.00, 10)],
+            },
+            {
+                "name": "挂耳咖啡 2",
+                "image": "",
+                "category": "挂耳咖啡",
+                "description": "商品信息待补充",
+                "price": 39.00,
+                "stock": 10,
+                "specs": [("10袋装", 39.00, 10)],
+            },
+            {
+                "name": "挂耳咖啡 3",
+                "image": "",
+                "category": "挂耳咖啡",
+                "description": "商品信息待补充",
+                "price": 39.00,
+                "stock": 10,
+                "specs": [("10袋装", 39.00, 10)],
+            },
+            {
+                "name": "挂耳咖啡 4",
+                "image": "",
+                "category": "挂耳咖啡",
+                "description": "商品信息待补充",
+                "price": 39.00,
+                "stock": 10,
+                "specs": [("10袋装", 39.00, 10)],
             },
         ]
 

@@ -62,6 +62,13 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
+    # ======== 用户上传媒体文件（头像等） ========
+    location /media/ {
+        alias /media/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
     location / {
         limit_req zone=api_limit burst=50 nodelay;
         limit_conn conn_limit 10;

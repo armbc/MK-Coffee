@@ -9,10 +9,12 @@
         <view class="login-btn" bindtap="doLogin">微信一键登录</view>
       </view>
       <view wx:else class="user-info">
-        <view class="avatar-placeholder">👤</view>
+        <image wx:if="{{userInfo.avatar}}" class="avatar-img" src="{{userInfo.avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar-placeholder">👤</view>
         <view class="info-right">
           <view class="nickname">{{userInfo.nickname || '咖啡爱好者'}}</view>
           <view class="phone" wx:if="{{userInfo.phone}}">{{userInfo.phone}}</view>
+          <view class="edit-profile-btn" bindtap="openEdit">✎ 编辑资料</view>
         </view>
       </view>
     </view>
@@ -55,5 +57,25 @@
   <view class="brand-footer">
     <text class="brand-name">MK-Coffee 迈科咖啡</text>
     <text class="brand-version">v1.0.0</text>
+  </view>
+
+  <!-- 编辑资料弹窗 -->
+  <view class="edit-mask" wx:if="{{showEdit}}" bindtap="closeEdit">
+    <view class="edit-panel" catchtap="noop">
+      <view class="edit-title">编辑资料</view>
+      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+        <image wx:if="{{editAvatar}}" class="edit-avatar" src="{{editAvatar}}" mode="aspectFill" />
+        <view wx:else class="edit-avatar-placeholder">👤</view>
+        <text class="avatar-hint">点击选择头像</text>
+      </button>
+      <view class="nickname-row">
+        <text class="nickname-label">昵称</text>
+        <input class="nickname-input" type="nickname" value="{{editNickname}}" bindinput="onNicknameInput" placeholder="请输入昵称" maxlength="20" />
+      </view>
+      <view class="edit-btns">
+        <view class="edit-btn cancel" bindtap="closeEdit">取消</view>
+        <view class="edit-btn save" bindtap="saveProfile">保存</view>
+      </view>
+    </view>
   </view>
 </view>

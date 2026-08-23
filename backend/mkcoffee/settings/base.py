@@ -114,6 +114,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# ========== 媒体文件（用户上传） ==========
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # ========== 默认主键 ==========
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

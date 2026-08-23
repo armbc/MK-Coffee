@@ -32,6 +32,68 @@
   background: #fefaf6; display: flex; align-items: center; justify-content: center;
   font-size: 48rpx; flex-shrink: 0;
 }
+.avatar-img {
+  width: 100rpx; height: 100rpx; border-radius: 50%;
+  background: #fefaf6; flex-shrink: 0;
+}
+.edit-profile-btn {
+  margin-top: 8rpx; font-size: 22rpx; color: #e8873a;
+}
+
+/* ===== 编辑资料弹窗 ===== */
+.edit-mask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45); z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.edit-panel {
+  width: 560rpx; background: #fff; border-radius: 24rpx;
+  padding: 40rpx 36rpx; box-sizing: border-box;
+}
+.edit-title {
+  font-size: 32rpx; font-weight: 800; color: #2c2416;
+  text-align: center; margin-bottom: 32rpx;
+}
+.avatar-btn {
+  width: 160rpx; height: 160rpx; margin: 0 auto 16rpx;
+  padding: 0; border-radius: 50%; background: #fefaf6;
+  border: 2rpx dashed #d5cdc3; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1.2;
+}
+.edit-avatar {
+  width: 156rpx; height: 156rpx; border-radius: 50%;
+}
+.edit-avatar-placeholder {
+  font-size: 56rpx;
+}
+.avatar-hint {
+  font-size: 20rpx; color: #b0a59a; margin-top: 4rpx;
+}
+.nickname-row {
+  display: flex; align-items: center;
+  padding: 20rpx 0; border-top: 1rpx solid #f0ebe3;
+  margin-top: 24rpx;
+}
+.nickname-label {
+  width: 100rpx; font-size: 28rpx; color: #2c2416; font-weight: 600;
+}
+.nickname-input {
+  flex: 1; font-size: 28rpx; color: #2c2416;
+}
+.edit-btns {
+  display: flex; gap: 20rpx; margin-top: 36rpx;
+}
+.edit-btn {
+  flex: 1; height: 76rpx; line-height: 76rpx; text-align: center;
+  border-radius: 40rpx; font-size: 28rpx; font-weight: 600;
+}
+.edit-btn.cancel {
+  background: #f5f0eb; color: #8c7b6e;
+}
+.edit-btn.save {
+  background: linear-gradient(135deg, #e8873a, #f0a060); color: #fff;
+}
 
 /* ===== 菜单 ===== */
 .menu-section { margin: 40rpx 28rpx 24rpx; background: #fff; border-radius: 16rpx; overflow: hidden; }

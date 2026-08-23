@@ -119,8 +119,49 @@ class UserProfileAPITest(TestCase):
     def test_update_profile(self):
         resp = self.client.put(self.url, {"nickname": "新昵称"}, format="json")
         self.assertEqual(resp.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.nickname, "新昵称")
+
+    def test_update_nickname_post(self):
+        """POST 版本昵称更新（小程序用）"""
+        resp = self.client.post(
+            reverse("user-update-profile"),
+            {"nickname": "POST昵称"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.nickname, "POST昵称")
+
+    def test_update_nickname_empty(self):
+        resp = self.client.post(
+            reverse("user-update-profile"),
+            {"nickname": "  "},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upload_avatar(self):
+        """头像上传：multipart 文件 → 返回 URL"""
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (100, 100), "orange").save(buf, "PNG")
+        file = SimpleUploadedFile(
+            "avatar.png", buf.getvalue(), content_type="image/png",
+        )
+        resp = self.client.post(
+            reverse("user-upload-avatar"),
+            {"avatar": file},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["data"]["nickname"], "新昵称")
+        self.assertEqual(data["code"], 0)
+        self.assertTrue(data["data"]["avatar"].startswith("http://testserver/media/avatars/"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.avatar.endswith(".png"))
 
     def test_unauthenticated(self):
         client = APIClient()

@@ -1,7 +1,10 @@
 """用户模块 · 视图"""
 import logging
+import uuid
+
 import requests
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets, mixins
@@ -99,6 +102,60 @@ class UserViewSet(
 
     def get_object(self):
         return self.request.user
+
+    @action(detail=False, methods=["post"], url_path="update")
+    def update_profile(self, request):
+        """更新昵称（POST 版本，兼容微信小程序）"""
+        nickname = (request.data.get("nickname") or "").strip()
+        if not nickname:
+            return Response(
+                {"code": 400, "data": None, "msg": "昵称不能为空"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = request.user
+        user.nickname = nickname[:64]
+        user.save(update_fields=["nickname"])
+        return Response({
+            "code": 0,
+            "data": UserSerializer(user).data,
+            "msg": "ok",
+        })
+
+    @action(detail=False, methods=["post"], url_path="avatar")
+    def upload_avatar(self, request):
+        """上传头像：multipart 文件 → 存 media/avatars → 返回 URL"""
+        file = request.FILES.get("avatar")
+        if not file:
+            return Response(
+                {"code": 400, "data": None, "msg": "缺少头像文件"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # 校验类型（微信 chooseAvatar 产出 jpg/png/webp）
+        allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+        ext = allowed.get(file.content_type)
+        if not ext:
+            return Response(
+                {"code": 400, "data": None, "msg": "仅支持 JPG/PNG/WebP 图片"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # 大小限制 2MB
+        if file.size > 2 * 1024 * 1024:
+            return Response(
+                {"code": 400, "data": None, "msg": "头像不能超过 2MB"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        filename = f"avatars/{uuid.uuid4().hex}{ext}"
+        saved = default_storage.save(filename, file)
+        avatar_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{saved}")
+        user = request.user
+        user.avatar = avatar_url
+        user.save(update_fields=["avatar"])
+        return Response({
+            "code": 0,
+            "data": {"avatar": avatar_url},
+            "msg": "头像已更新",
+        })
 
 
 class AddressViewSet(

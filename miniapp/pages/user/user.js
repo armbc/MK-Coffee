@@ -66,12 +66,13 @@ Page({
       showEdit: true,
       editNickname: u.nickname || '',
       editAvatar: u.avatar || '',
+      saving: false, // 重置，避免上次保存卡死导致按钮失效
     })
   },
 
   closeEdit() {
-    if (this.data.saving) return
-    this.setData({ showEdit: false })
+    // 取消不依赖 saving：保存中关闭弹窗也允许（保存结果会异步刷新）
+    this.setData({ showEdit: false, saving: false })
   },
 
   noop() {},

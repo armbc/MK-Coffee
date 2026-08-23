@@ -80,7 +80,11 @@ Page({
 
   /** 选择头像（微信返回本地临时路径） */
   onChooseAvatar(e) {
-    this.setData({ editAvatar: e.detail.avatarUrl })
+    const avatarUrl = e.detail && e.detail.avatarUrl
+    console.log('[头像] chooseavatar 事件触发, avatarUrl =', avatarUrl)
+    if (avatarUrl) {
+      this.setData({ editAvatar: avatarUrl })
+    }
   },
 
   onNicknameInput(e) {

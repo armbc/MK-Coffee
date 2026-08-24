@@ -57,7 +57,7 @@ Page({
   goOrders() { wx.switchTab({ url: '/pages/order/order' }) },
   goAddress() { wx.navigateTo({ url: '/pages/addresses/addresses' }) },
   goCoupons() { wx.navigateTo({ url: '/pages/coupons/coupons' }) },
-  goStore() { wx.navigateTo({ url: '/pages/store/store' }) },
+  // goStore() { wx.navigateTo({ url: '/pages/store/store' }) }, // 门店导航：暂未设立对外门店，入口已注释隐藏
 
   // ---- 编辑资料 ----
 

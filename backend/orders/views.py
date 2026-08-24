@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
 from payments.models import PaymentRecord
@@ -28,6 +28,7 @@ from .serializers import (
     OrderDetailSerializer,
     OrderCreateSerializer,
 )
+from .services import ship_order
 
 
 class CartViewSet(
@@ -326,6 +327,26 @@ class OrderViewSet(
             "data": OrderDetailSerializer(order).data,
             "msg": "下单成功",
         }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="ship", permission_classes=[IsAdminUser])
+    def ship(self, request, pk=None):
+        """商家发货：将「已支付」订单标记为「已发货」
+
+        商家视角，不走 self.get_object()（它按当前用户过滤，订单属于买家）。
+        与 Django Admin 的「标记为已发货」共用 ship_order 业务逻辑。
+        """
+        order = get_object_or_404(Order, pk=pk)
+        order, err = ship_order(order)
+        if err:
+            return Response(
+                {"code": 400, "data": None, "msg": err},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "code": 0,
+            "data": OrderDetailSerializer(order).data,
+            "msg": "已发货",
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="cancel")
     def cancel(self, request, pk=None):

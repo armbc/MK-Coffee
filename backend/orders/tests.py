@@ -598,3 +598,88 @@ class OrderAPITest(TestCase):
         self.assertEqual(float(order.payable), 306.00)
         rec = PaymentRecord.objects.get(order=order, method="mock")
         self.assertEqual(float(rec.amount), 306.00)
+
+
+class OrderShipAPITest(TestCase):
+    """商家发货 API 测试（方案 C：API 与 Admin 共用 ship_order 业务逻辑）"""
+
+    def setUp(self):
+        self.buyer = User.objects.create(openid="ship_buyer", nickname="买家")
+        self.staff = User.objects.create(openid="ship_staff", nickname="商家", is_staff=True)
+        self.cat = Category.objects.create(name="咖啡豆")
+        self.product = Product.objects.create(
+            name="耶加雪菲", category=self.cat, price=88.00, stock=50,
+        )
+
+    def _create_order(self, status="paid"):
+        """直接创建指定状态的订单（含明细），跳过购物车/支付流程"""
+        order = Order.objects.create(
+            user=self.buyer, total=88.00, status=status,
+            receiver_name="张三", receiver_phone="13900139000",
+            receiver_address="江苏省苏州市工业园区星湖街328号",
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product,
+            product_name=self.product.name, price=88.00, quantity=1,
+        )
+        return order
+
+    def _auth_client(self, user):
+        client = APIClient()
+        refresh = RefreshToken.for_user(user)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        return client
+
+    # ---- 发货成功 ----
+
+    def test_staff_ship_paid_order(self):
+        """商家可将「已支付」订单发货"""
+        order = self._create_order("paid")
+        resp = self._auth_client(self.staff).post(reverse("order-ship", args=[order.id]))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["code"], 0)
+        self.assertEqual(data["msg"], "已发货")
+        self.assertEqual(data["data"]["status"], "shipped")
+        order.refresh_from_db()
+        self.assertEqual(order.status, "shipped")
+
+    # ---- 权限 ----
+
+    def test_ship_requires_staff(self):
+        """普通买家不能调用发货接口（403）"""
+        order = self._create_order("paid")
+        resp = self._auth_client(self.buyer).post(reverse("order-ship", args=[order.id]))
+        self.assertEqual(resp.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "paid")  # 状态未被改动
+
+    def test_ship_requires_auth(self):
+        """未登录调用发货接口（401）"""
+        order = self._create_order("paid")
+        resp = APIClient().post(reverse("order-ship", args=[order.id]))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_ship_nonexistent_order_404(self):
+        resp = self._auth_client(self.staff).post(reverse("order-ship", args=[99999]))
+        self.assertEqual(resp.status_code, 404)
+
+    # ---- 状态流转校验（幂等保护）----
+
+    def test_cannot_ship_pending_order(self):
+        order = self._create_order("pending")
+        resp = self._auth_client(self.staff).post(reverse("order-ship", args=[order.id]))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("无法发货", resp.json()["msg"])
+        order.refresh_from_db()
+        self.assertEqual(order.status, "pending")
+
+    def test_cannot_ship_already_shipped_or_terminal(self):
+        """已发货/已完成/已取消订单不可重复发货"""
+        for st in ("shipped", "completed", "cancelled"):
+            order = self._create_order(st)
+            resp = self._auth_client(self.staff).post(reverse("order-ship", args=[order.id]))
+            self.assertEqual(resp.status_code, 400, f"status={st} 应拒绝发货")
+            self.assertIn("无法发货", resp.json()["msg"])
+            order.refresh_from_db()
+            self.assertEqual(order.status, st, f"status={st} 不应被改变")

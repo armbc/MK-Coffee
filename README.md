@@ -129,6 +129,7 @@ All endpoints are prefixed with `/api/`. Authenticated requests require `Authori
 | | `POST /orders/` | Bearer |
 | | `POST /orders/{id}/cancel/` | Bearer |
 | | `POST /orders/{id}/pay/` | Bearer |
+| | `POST /orders/{id}/ship/` | Admin (Bearer, staff) |
 | **Coupons** | `GET /coupons/` | — |
 | | `POST /coupons/{id}/claim/` | Bearer |
 | **Addresses** | `GET /addresses/` | Bearer |
@@ -176,7 +177,7 @@ cd backend
 python manage.py test
 ```
 
-Current status: **66 / 66 tests passing** (users, products, orders, coupons, addresses).
+Current status: **105 / 105 tests passing** (users, products, orders, coupons, payments, addresses).
 
 ## 📄 License
 

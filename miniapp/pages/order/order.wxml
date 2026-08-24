@@ -63,3 +63,18 @@
     </view>
   </view>
 </view>
+
+<!-- ===== 确认支付弹窗（自定义，支持「退回购物车」） ===== -->
+<view class="pay-mask" wx:if="{{showPayModal}}" bindtap="closePayModal">
+  <view class="pay-panel" catchtap="noop">
+    <view class="pay-title">确认支付</view>
+    <view class="pay-amount">¥{{payAmount}}</view>
+    <view class="pay-discount" wx:if="{{payDiscountLine}}">优惠券 {{payDiscountLine}}</view>
+    <view class="pay-tip">确认支付后订单将进入「已支付」，商家将尽快发货</view>
+    <view class="pay-actions">
+      <view class="pay-btn back" bindtap="backToCart">退回购物车</view>
+      <view class="pay-btn confirm {{paying ? 'disabled' : ''}}" bindtap="confirmPay">{{paying ? '处理中...' : '确认支付'}}</view>
+    </view>
+    <view class="pay-cancel" bindtap="closePayModal">暂不支付</view>
+  </view>
+</view>

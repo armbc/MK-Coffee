@@ -30,6 +30,12 @@ Page({
     loading: true,
     detailOrder: null,
     maxWidth: 0,
+    /** 确认支付弹窗（自定义，支持「退回购物车」） */
+    showPayModal: false,
+    payOrderId: null,
+    payAmount: '0.00',
+    payDiscountLine: '',
+    paying: false,
   },
 
   onLoad(opts) {
@@ -131,45 +137,77 @@ Page({
     const id = e.currentTarget.dataset.id
     // 优先从列表找；详情页打开时列表可能为空，回退到 detailOrder
     const order = this.data.orders.find(o => o.id === id) || this.data.detailOrder || {}
-    const amount = order.payable_text || '0.00'
-    const discountLine = order.discount_text ? `\n优惠券：${order.discount_text}` : ''
+    this.setData({
+      showPayModal: true,
+      payOrderId: id,
+      payAmount: order.payable_text || '0.00',
+      payDiscountLine: order.discount_text || '',
+      paying: false,
+    })
+  },
 
-    wx.showModal({
-      title: '确认支付',
-      content: `订单金额 ¥${amount}${discountLine}，确认支付？`,
-      success: (res) => {
-        if (!res.confirm) return
+  closePayModal() {
+    if (this.data.paying) return
+    this.setData({ showPayModal: false, payOrderId: null })
+  },
 
-        api.post(`/orders/${id}/pay/`).then(data => {
-          // data = { method: "mock"|"wechat_jsapi", pay_params?: {...}, order?: {...} }
-          if (data.method === 'mock') {
+  noop() {},
+
+  /** 弹窗「确认支付」：调支付接口（mock / wechat_jsapi 双路径） */
+  confirmPay() {
+    const id = this.data.payOrderId
+    if (!id || this.data.paying) return
+    this.setData({ paying: true })
+
+    api.post(`/orders/${id}/pay/`).then(data => {
+      // data = { method: "mock"|"wechat_jsapi", pay_params?: {...}, order?: {...} }
+      if (data.method === 'mock') {
+        wx.showToast({ title: '支付成功', icon: 'success' })
+        this.setData({ showPayModal: false, payOrderId: null, paying: false })
+        this.fetchOrders()
+      } else if (data.method === 'wechat_jsapi') {
+        const pp = data.pay_params || {}
+        wx.requestPayment({
+          timeStamp: pp.timeStamp,
+          nonceStr: pp.nonceStr,
+          package: pp.package,
+          signType: pp.signType || 'RSA',
+          paySign: pp.paySign,
+          success: () => {
             wx.showToast({ title: '支付成功', icon: 'success' })
+            this.setData({ showPayModal: false, payOrderId: null, paying: false })
             this.fetchOrders()
-          } else if (data.method === 'wechat_jsapi') {
-            const pp = data.pay_params || {}
-            wx.requestPayment({
-              timeStamp: pp.timeStamp,
-              nonceStr: pp.nonceStr,
-              package: pp.package,
-              signType: pp.signType || 'RSA',
-              paySign: pp.paySign,
-              success: () => {
-                wx.showToast({ title: '支付成功', icon: 'success' })
-                this.fetchOrders()
-              },
-              fail: (err) => {
-                if (err.errMsg.includes('cancel')) {
-                  wx.showToast({ title: '已取消支付', icon: 'none' })
-                } else {
-                  wx.showToast({ title: '支付失败，请重试', icon: 'none' })
-                }
-              },
-            })
-          }
-        }).catch(() => {
-          wx.showToast({ title: '支付请求失败', icon: 'none' })
+          },
+          fail: (err) => {
+            this.setData({ paying: false })
+            if (err.errMsg.includes('cancel')) {
+              wx.showToast({ title: '已取消支付', icon: 'none' })
+            } else {
+              wx.showToast({ title: '支付失败，请重试', icon: 'none' })
+            }
+          },
         })
-      },
+      }
+    }).catch(() => {
+      this.setData({ paying: false })
+      wx.showToast({ title: '支付请求失败', icon: 'none' })
+    })
+  },
+
+  /** 弹窗「退回购物车」：取消待支付订单并把商品退回购物车 */
+  backToCart() {
+    const id = this.data.payOrderId
+    if (!id || this.data.paying) return
+    this.setData({ paying: true })
+
+    api.post(`/orders/${id}/back-to-cart/`).then(() => {
+      wx.showToast({ title: '已退回购物车', icon: 'success' })
+      this.setData({ showPayModal: false, payOrderId: null, paying: false, detailOrder: null })
+      this.fetchOrders()
+      setTimeout(() => wx.switchTab({ url: '/pages/cart/cart' }), 800)
+    }).catch(() => {
+      this.setData({ paying: false })
+      wx.showToast({ title: '退回失败，请重试', icon: 'none' })
     })
   },
 

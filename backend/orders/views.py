@@ -28,7 +28,7 @@ from .serializers import (
     OrderDetailSerializer,
     OrderCreateSerializer,
 )
-from .services import ship_order
+from .services import ship_order, cancel_order_to_cart
 
 
 class CartViewSet(
@@ -346,6 +346,29 @@ class OrderViewSet(
             "code": 0,
             "data": OrderDetailSerializer(order).data,
             "msg": "已发货",
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="back-to-cart")
+    def back_to_cart(self, request, pk=None):
+        """取消待支付订单并把商品退回购物车（顾客支付弹窗「退回购物车」）
+
+        仅本人待支付订单可操作；与 cancel 的取消语义一致，
+        额外把订单明细写回购物车（同品同规格合并数量）。
+        """
+        order = self.get_object()
+        order, cart_count, err = cancel_order_to_cart(order)
+        if err:
+            return Response(
+                {"code": 400, "data": None, "msg": err},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "code": 0,
+            "data": {
+                "order": OrderDetailSerializer(order).data,
+                "cart_count": cart_count,
+            },
+            "msg": "已退回购物车",
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="cancel")

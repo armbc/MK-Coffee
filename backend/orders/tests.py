@@ -683,3 +683,128 @@ class OrderShipAPITest(TestCase):
             self.assertIn("无法发货", resp.json()["msg"])
             order.refresh_from_db()
             self.assertEqual(order.status, st, f"status={st} 不应被改变")
+
+
+class OrderBackToCartAPITest(TestCase):
+    """「退回购物车」API 测试：取消待支付订单并把商品写回购物车"""
+
+    def setUp(self):
+        self.user = User.objects.create(openid="back_cart_user", nickname="退货用户")
+        self.cat = Category.objects.create(name="咖啡豆")
+        self.product = Product.objects.create(
+            name="耶加雪菲", category=self.cat, price=88.00, stock=50,
+        )
+        self.product2 = Product.objects.create(
+            name="曼特宁", category=self.cat, price=75.00, stock=30,
+        )
+        self.spec = Spec.objects.create(
+            product=self.product, name="500g", price=158.00, stock=20,
+        )
+        self.address = Address.objects.create(
+            user=self.user, name="张三", phone="13900139000",
+            province="江苏省", city="苏州市", district="工业园区", detail="星湖街328号",
+        )
+        self.client = APIClient()
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        self.list_url = reverse("order-list")
+
+    def _create_pending_order(self):
+        """下单生成待支付订单（购物车被清空、库存已扣）"""
+        CartItem.objects.create(user=self.user, product=self.product, spec=self.spec, quantity=2)
+        CartItem.objects.create(user=self.user, product=self.product2, quantity=1)
+        resp = self.client.post(self.list_url, {"address_id": self.address.id}, format="json")
+        self.assertEqual(resp.status_code, 201)
+        return resp.json()["data"]["id"]
+
+    def test_back_to_cart_success(self):
+        """待支付订单退回购物车：订单取消、库存恢复、商品回购物车"""
+        order_id = self._create_pending_order()
+        self.assertEqual(CartItem.objects.filter(user=self.user).count(), 0)
+        self.spec.refresh_from_db()
+        self.product2.refresh_from_db()
+        self.assertEqual(self.spec.stock, 18)   # 20 - 2
+        self.assertEqual(self.product2.stock, 29)  # 30 - 1
+
+        resp = self.client.post(reverse("order-back-to-cart", args=[order_id]))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["code"], 0)
+        self.assertEqual(data["msg"], "已退回购物车")
+        self.assertEqual(data["data"]["order"]["status"], "cancelled")
+        self.assertEqual(data["data"]["cart_count"], 3)
+
+        # 订单取消
+        order = Order.objects.get(pk=order_id)
+        self.assertEqual(order.status, "cancelled")
+        # 库存恢复
+        self.spec.refresh_from_db()
+        self.product2.refresh_from_db()
+        self.assertEqual(self.spec.stock, 20)
+        self.assertEqual(self.product2.stock, 30)
+        # 购物车恢复：有规格 2 件 + 无规格 1 件
+        items = CartItem.objects.filter(user=self.user)
+        self.assertEqual(items.count(), 2)
+        by_spec = {i.spec_id: i.quantity for i in items}
+        self.assertEqual(by_spec[self.spec.id], 2)
+        no_spec = items.filter(spec__isnull=True).first()
+        self.assertEqual(no_spec.quantity, 1)
+
+    def test_back_to_cart_merges_quantity(self):
+        """购物车已有同品同规格时退回合并数量"""
+        order_id = self._create_pending_order()
+        # 顾客退回前又加了一单同规格商品到购物车
+        CartItem.objects.create(user=self.user, product=self.product, spec=self.spec, quantity=5)
+        resp = self.client.post(reverse("order-back-to-cart", args=[order_id]))
+        self.assertEqual(resp.status_code, 200)
+        item = CartItem.objects.get(user=self.user, product=self.product, spec=self.spec)
+        self.assertEqual(item.quantity, 7)  # 5 + 2
+
+    def test_back_to_cart_releases_coupon(self):
+        """退回购物车时释放优惠券（可再次使用）"""
+        from datetime import timedelta
+        from django.utils import timezone
+        from coupons.models import Coupon, UserCoupon
+        now = timezone.now()
+        coupon = Coupon.objects.create(
+            name="测试券", type="full_reduce", value=10, min_amount=0, stock=100,
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=7),
+            status="active",
+        )
+        CartItem.objects.create(user=self.user, product=self.product, quantity=1)
+        uc = UserCoupon.objects.create(user=self.user, coupon=coupon)
+        resp = self.client.post(
+            self.list_url,
+            {"address_id": self.address.id, "coupon_id": uc.id},
+            format="json",
+        )
+        order_id = resp.json()["data"]["id"]
+        self.assertEqual(UserCoupon.objects.get(pk=uc.pk).status, "used")
+        resp = self.client.post(reverse("order-back-to-cart", args=[order_id]))
+        self.assertEqual(resp.status_code, 200)
+        uc.refresh_from_db()
+        self.assertEqual(uc.status, "unused")
+        self.assertIsNone(uc.order)
+        self.assertIsNone(uc.used_at)
+
+    def test_cannot_back_to_cart_non_pending(self):
+        """已支付/已发货/已完成/已取消订单不可退回（幂等保护）"""
+        for st in ("paid", "shipped", "completed", "cancelled"):
+            order = Order.objects.create(user=self.user, total=88.00, status=st)
+            resp = self.client.post(reverse("order-back-to-cart", args=[order.id]))
+            self.assertEqual(resp.status_code, 400, f"status={st} 应拒绝")
+            self.assertIn("无法退回", resp.json()["msg"])
+            order.refresh_from_db()
+            self.assertEqual(order.status, st)
+
+    def test_back_to_cart_requires_auth(self):
+        order = Order.objects.create(user=self.user, total=88.00, status="pending")
+        resp = APIClient().post(reverse("order-back-to-cart", args=[order.id]))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_cannot_back_to_cart_others_order(self):
+        """不能把别人的订单退回自己的购物车"""
+        other = User.objects.create(openid="back_cart_other")
+        order = Order.objects.create(user=other, total=88.00, status="pending")
+        resp = self.client.post(reverse("order-back-to-cart", args=[order.id]))
+        self.assertEqual(resp.status_code, 404)

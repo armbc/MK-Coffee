@@ -68,7 +68,7 @@ class Command(BaseCommand):
                 "stock": 50,
                 "specs": [("500g", 109.00, 50)],
             },
-            # ---- 罐装线（250g 单规格）----
+            # ---- 罐装线（200g 单规格）----
             {
                 "name": "印度尼西亚·曼特宁咖啡豆",
                 "image": "https://api.mk-coffee.cn/static/products/bin_mantening.jpg",
@@ -76,7 +76,7 @@ class Command(BaseCommand):
                 "description": "草本、香料、黑巧克力风味，湿刨法",
                 "price": 69.00,
                 "stock": 35,
-                "specs": [("250g", 69.00, 35)],
+                "specs": [("200g", 69.00, 35)],
             },
             {
                 "name": "埃塞俄比亚·耶加雪菲咖啡豆",
@@ -85,7 +85,7 @@ class Command(BaseCommand):
                 "description": "柑橘、茉莉花、蜂蜜风味，水洗处理",
                 "price": 69.00,
                 "stock": 30,
-                "specs": [("250g", 69.00, 30)],
+                "specs": [("200g", 69.00, 30)],
             },
             {
                 "name": "哥伦比亚·低因咖啡豆",
@@ -94,7 +94,7 @@ class Command(BaseCommand):
                 "description": "脱因处理，风味柔和，晚间也可安心饮用",
                 "price": 79.00,
                 "stock": 30,
-                "specs": [("250g", 79.00, 30)],
+                "specs": [("200g", 79.00, 30)],
             },
             {
                 "name": "意式拼配咖啡豆",
@@ -103,7 +103,7 @@ class Command(BaseCommand):
                 "description": "经典意式拼配，浓郁醇厚、油脂丰富，适合浓缩与奶咖",
                 "price": 59.00,
                 "stock": 40,
-                "specs": [("250g", 59.00, 40)],
+                "specs": [("200g", 59.00, 40)],
             },
             # ---- 挂耳线（10袋装）----
             {

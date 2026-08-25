@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 
 from coupons.models import Coupon, UserCoupon
 from orders.models import CartItem, Order
+from payments.models import PaymentRecord
 from users.models import Address
 
 
@@ -12,8 +13,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         counters = {}
-        # 先删订单（OrderItem 随 Order 级联，Order.user 为 PROTECT 需先删）
+        # 先删支付记录（PaymentRecord.order 为 PROTECT），再删订单（OrderItem 随 Order 级联）
         for label, qs in [
+            ("支付记录", PaymentRecord.objects.all()),
             ("订单", Order.objects.all()),
             ("购物车", CartItem.objects.all()),
             ("用户优惠券", UserCoupon.objects.all()),

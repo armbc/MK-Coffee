@@ -59,11 +59,13 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
 class OrderItemSerializer(serializers.ModelSerializer):
     """订单明细"""
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    product_image = serializers.URLField(source="product.image", read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             "id", "product", "product_name",
+            "product_image",
             "spec", "spec_name",
             "price", "quantity", "subtotal",
         ]

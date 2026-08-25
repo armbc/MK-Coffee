@@ -6,7 +6,10 @@
           <text wx:if="{{item.isSelected}}">✓</text>
         </view>
       </view>
-      <view class="item-img"><text class="img-icon">☕</text></view>
+      <view class="item-img">
+        <image wx:if="{{item.product_image}}" class="item-image" src="{{item.product_image}}" mode="aspectFill" />
+        <text wx:else class="img-icon">☕</text>
+      </view>
       <view class="item-info">
         <view class="item-name">{{item.product_name}}</view>
         <view class="item-spec" wx:if="{{item.spec_name}}">{{item.spec_name}}</view>

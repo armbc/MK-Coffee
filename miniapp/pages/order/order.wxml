@@ -6,7 +6,10 @@
   </view>
   <view class="detail-items">
     <view class="detail-item" wx:for="{{detailOrder.items}}" wx:key="id">
-      <view class="di-img"><text class="img-icon">☕</text></view>
+      <view class="di-img">
+        <image wx:if="{{item.product_image}}" class="di-image" src="{{item.product_image}}" mode="aspectFill" />
+        <text wx:else class="img-icon">☕</text>
+      </view>
       <view class="di-info">
         <view class="di-name">{{item.product_name}}</view>
         <view class="di-spec" wx:if="{{item.spec_name}}">{{item.spec_name}}</view>

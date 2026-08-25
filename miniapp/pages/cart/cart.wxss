@@ -36,6 +36,12 @@
   border-radius: 12rpx;
   display: flex; align-items: center; justify-content: center;
   margin-right: 16rpx; flex-shrink: 0;
+  overflow: hidden;
+}
+.item-img .item-image {
+  width: 100%; height: 100%;
+  border-radius: 12rpx;
+  display: block;
 }
 .img-icon { font-size: 50rpx; opacity: 0.5; }
 

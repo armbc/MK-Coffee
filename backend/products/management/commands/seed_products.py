@@ -169,18 +169,20 @@ class Command(BaseCommand):
             self.stdout.write(f"  {'✓' if created else '↻'} 商品: {item['name']}")
 
         # === 下架同事清单外的旧商品（保留数据，可恢复）===
+        # 注：按商品名匹配（全库唯一），跨环境幂等（本地已删分类/商品，生产因订单引用保留）
         down_list = [
             ("埃塞俄比亚 耶加雪菲", "袋装咖啡豆"),
             ("哥伦比亚 蕙兰", "袋装咖啡豆"),
             ("巴西 喜拉多", "罐装咖啡豆"),
             ("定制拼配·深烘", "定制烘焙咖啡豆"),
             ("定制拼配·中烘", "定制烘焙咖啡豆"),
+            ("HARIO V60 滤杯", "咖啡器皿"),   # 器皿分类已停用；商品有历史订单引用不能删
+            ("手冲壶·细嘴", "咖啡器皿"),
         ]
-        for name, cat_name in down_list:
-            n = Product.objects.filter(
-                name=name, category=cat_objs[cat_name]
-            ).update(status="off")
-            if n:
-                self.stdout.write(f"  ✗ 下架: {name}")
+        off_count = Product.objects.filter(
+            name__in=[name for name, _ in down_list]
+        ).update(status="off")
+        if off_count:
+            self.stdout.write(f"  ✗ 下架清单外商品: {off_count} 个")
 
         self.stdout.write(self.style.SUCCESS(f"\n种子数据完成: {Category.objects.count()} 分类, {Product.objects.count()} 商品"))

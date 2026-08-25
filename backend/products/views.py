@@ -11,8 +11,8 @@ from .serializers import (
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    """分类接口（只读）"""
-    queryset = Category.objects.all()
+    """分类接口（只读）：仅返回有上架商品的分类（空分类不显示）"""
+    queryset = Category.objects.filter(products__status="on").distinct()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
 

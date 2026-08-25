@@ -1,18 +1,24 @@
-"""种子数据：分类 + 占位商品"""
+"""种子数据：分类 + 商品（2026-08-25 按同事《产品分类与价格》更新）
+
+3 条产品线：铁罐（罐装咖啡豆）/ 挂耳咖啡 / 袋装咖啡豆
+- 商品命名对齐同事清单（旧名通过 rename_map 迁移，保留 id 与订单引用）
+- 罐装仅保留 250g 单规格（同事未给 500g 价格）
+- 同事清单外的旧商品下架（status=off，保留数据）
+"""
 from django.core.management.base import BaseCommand
 from products.models import Category, Product, Spec
 
 
 class Command(BaseCommand):
-    help = "初始化商品分类和占位商品"
+    help = "初始化商品分类和商品（3 条产品线：铁罐/挂耳/袋装）"
 
     def handle(self, *args, **options):
         # === 分类 ===
         categories = {
             "袋装咖啡豆": {"sort": 1, "icon": "☕"},
             "罐装咖啡豆": {"sort": 2, "icon": "🫙"},
-            "定制烘焙咖啡豆": {"sort": 3, "icon": "🔥"},
-            "咖啡器皿": {"sort": 4, "icon": "🫖"},
+            "定制烘焙咖啡豆": {"sort": 3, "icon": "🔥"},  # 分类保留，清单外商品已下架
+            # "咖啡器皿": {"sort": 4, "icon": "🫖"},  # 已停用（2026-08-25），恢复时取消注释
             "挂耳咖啡": {"sort": 5, "icon": "🫘"},
         }
         cat_objs = {}
@@ -24,116 +30,118 @@ class Command(BaseCommand):
             cat_objs[name] = obj
             self.stdout.write(f"  {'✓' if created else '·'} 分类: {name}")
 
-        # === 占位商品 ===
+        # === 清理旧挂耳占位商品（已被真实挂耳商品取代）===
+        stale = Product.objects.filter(
+            category=cat_objs["挂耳咖啡"], name__regex=r"^挂耳咖啡 \d+$"
+        )
+        if stale.exists():
+            n = stale.count()
+            stale.delete()
+            self.stdout.write(f"  ✗ 删除旧挂耳占位商品: {n} 个")
+
+        # === 旧名 → 同事命名 迁移（保留商品 id，订单引用不断）===
+        rename_map = [
+            ("印尼 曼特宁", "罐装咖啡豆", "印度尼西亚·曼特宁咖啡豆"),
+            ("耶加雪菲", "罐装咖啡豆", "埃塞俄比亚·耶加雪菲咖啡豆"),
+            ("低因咖啡豆", "罐装咖啡豆", "哥伦比亚·低因咖啡豆"),
+            ("意式拼配", "罐装咖啡豆", "意式拼配咖啡豆"),
+            ("意式拼配 500g", "袋装咖啡豆", "经典意式拼配咖啡豆"),
+            ("巴西 挂耳咖啡", "挂耳咖啡", "巴西·喜拉多挂耳咖啡"),
+            ("低因 挂耳咖啡", "挂耳咖啡", "哥伦比亚·低因处理挂耳咖啡"),
+            ("曼特宁 挂耳咖啡", "挂耳咖啡", "印度尼西亚·曼特宁挂耳咖啡"),
+            ("耶加雪菲 挂耳咖啡", "挂耳咖啡", "埃塞俄比亚·耶加雪菲挂耳咖啡"),
+        ]
+        for old_name, cat_name, new_name in rename_map:
+            qs = Product.objects.filter(name=old_name, category=cat_objs[cat_name])
+            if qs.exists():
+                qs.update(name=new_name)
+                self.stdout.write(f"  ↻ 改名: {old_name} → {new_name}")
+
+        # === 商品数据（同事清单：3 条产品线 9 个商品）===
         products_data = [
+            # ---- 袋装线 ----
             {
-                "name": "埃塞俄比亚 耶加雪菲",
-                "image": "https://api.mk-coffee.cn/static/products/yirgacheffe.jpg",
+                "name": "经典意式拼配咖啡豆",
+                "image": "https://api.mk-coffee.cn/static/products/500g_yishi.jpg",
                 "category": "袋装咖啡豆",
-                "description": "柑橘、茉莉花、蜂蜜风味，水洗处理",
-                "price": 88.00,
+                "description": "大包装深烘意式拼配，浓郁醇厚，适合日常口粮与办公场景",
+                "price": 109.00,
                 "stock": 50,
-                "specs": [("200g", 88.00, 30), ("500g", 198.00, 20)],
+                "specs": [("500g", 109.00, 50)],
             },
+            # ---- 罐装线（250g 单规格）----
             {
-                "name": "哥伦比亚 蕙兰",
-                "image": "https://api.mk-coffee.cn/static/products/colombia.jpg",
-                "category": "袋装咖啡豆",
-                "description": "焦糖、坚果、巧克力风味，水洗处理",
-                "price": 78.00,
-                "stock": 40,
-                "specs": [("200g", 78.00, 25), ("500g", 178.00, 15)],
-            },
-            {
-                "name": "巴西 喜拉多",
-                "image": "https://api.mk-coffee.cn/static/products/brazil.jpg",
-                "category": "罐装咖啡豆",
-                "description": "花生、奶油、可可风味，日晒处理",
-                "price": 68.00,
-                "stock": 60,
-                "specs": [("250g", 68.00, 40), ("500g", 128.00, 20)],
-            },
-            {
-                "name": "印尼 曼特宁",
-                "image": "https://api.mk-coffee.cn/static/products/mandheling.jpg",
+                "name": "印度尼西亚·曼特宁咖啡豆",
+                "image": "https://api.mk-coffee.cn/static/products/bin_mantening.jpg",
                 "category": "罐装咖啡豆",
                 "description": "草本、香料、黑巧克力风味，湿刨法",
-                "price": 75.00,
+                "price": 69.00,
                 "stock": 35,
-                "specs": [("250g", 75.00, 20), ("500g", 138.00, 15)],
+                "specs": [("250g", 69.00, 35)],
             },
             {
-                "name": "定制拼配·深烘",
-                "image": "https://api.mk-coffee.cn/static/products/custom-dark.jpg",
-                "category": "定制烘焙咖啡豆",
-                "description": "根据您的口味定制烘焙程度，适合意式浓缩",
-                "price": 128.00,
-                "stock": 20,
-                "specs": [("500g", 128.00, 10), ("1kg", 238.00, 10)],
+                "name": "埃塞俄比亚·耶加雪菲咖啡豆",
+                "image": "https://api.mk-coffee.cn/static/products/bin_yejia.jpg",
+                "category": "罐装咖啡豆",
+                "description": "柑橘、茉莉花、蜂蜜风味，水洗处理",
+                "price": 69.00,
+                "stock": 30,
+                "specs": [("250g", 69.00, 30)],
             },
             {
-                "name": "定制拼配·中烘",
-                "image": "https://api.mk-coffee.cn/static/products/custom-medium.jpg",
-                "category": "定制烘焙咖啡豆",
-                "description": "均衡口感，适合手冲和法压壶",
-                "price": 118.00,
-                "stock": 20,
-                "specs": [("500g", 118.00, 10), ("1kg", 218.00, 10)],
+                "name": "哥伦比亚·低因咖啡豆",
+                "image": "https://api.mk-coffee.cn/static/products/bin_diyin.jpg",
+                "category": "罐装咖啡豆",
+                "description": "脱因处理，风味柔和，晚间也可安心饮用",
+                "price": 79.00,
+                "stock": 30,
+                "specs": [("250g", 79.00, 30)],
             },
             {
-                "name": "HARIO V60 滤杯",
-                "image": "https://api.mk-coffee.cn/static/products/v60.jpg",
-                "category": "咖啡器皿",
-                "description": "经典锥形滤杯，陶瓷材质，1-2人份",
-                "price": 128.00,
-                "stock": 15,
-                "specs": [("白色", 128.00, 10), ("黑色", 128.00, 5)],
+                "name": "意式拼配咖啡豆",
+                "image": "https://api.mk-coffee.cn/static/products/bin_yishi.jpg",
+                "category": "罐装咖啡豆",
+                "description": "经典意式拼配，浓郁醇厚、油脂丰富，适合浓缩与奶咖",
+                "price": 59.00,
+                "stock": 40,
+                "specs": [("250g", 59.00, 40)],
             },
+            # ---- 挂耳线（10袋装）----
             {
-                "name": "手冲壶·细嘴",
-                "image": "https://api.mk-coffee.cn/static/products/kettle.jpg",
-                "category": "咖啡器皿",
-                "description": "不锈钢细嘴手冲壶，600ml，精准控流",
-                "price": 168.00,
-                "stock": 10,
-                "specs": [("600ml", 168.00, 10)],
-            },
-            # === 挂耳咖啡（占位，信息待补充）===
-            {
-                "name": "挂耳咖啡 1",
-                "image": "",
+                "name": "印度尼西亚·曼特宁挂耳咖啡",
+                "image": "https://api.mk-coffee.cn/static/products/drip_mantening.jpg",
                 "category": "挂耳咖啡",
-                "description": "商品信息待补充",
-                "price": 39.00,
-                "stock": 10,
-                "specs": [("10袋装", 39.00, 10)],
+                "description": "草本、香料、黑巧克力风味，湿刨法",
+                "price": 69.00,
+                "stock": 25,
+                "specs": [("10袋装", 69.00, 25)],
             },
             {
-                "name": "挂耳咖啡 2",
-                "image": "",
+                "name": "埃塞俄比亚·耶加雪菲挂耳咖啡",
+                "image": "https://api.mk-coffee.cn/static/products/drip_yejia.jpg",
                 "category": "挂耳咖啡",
-                "description": "商品信息待补充",
-                "price": 39.00,
-                "stock": 10,
-                "specs": [("10袋装", 39.00, 10)],
+                "description": "柑橘、茉莉花、蜂蜜风味，水洗处理",
+                "price": 69.00,
+                "stock": 30,
+                "specs": [("10袋装", 69.00, 30)],
             },
             {
-                "name": "挂耳咖啡 3",
-                "image": "",
+                "name": "哥伦比亚·低因处理挂耳咖啡",
+                "image": "https://api.mk-coffee.cn/static/products/drip_diyin.jpg",
                 "category": "挂耳咖啡",
-                "description": "商品信息待补充",
-                "price": 39.00,
-                "stock": 10,
-                "specs": [("10袋装", 39.00, 10)],
+                "description": "脱因处理，柔和顺口，适合晚间饮用",
+                "price": 79.00,
+                "stock": 25,
+                "specs": [("10袋装", 79.00, 25)],
             },
             {
-                "name": "挂耳咖啡 4",
-                "image": "",
+                "name": "巴西·喜拉多挂耳咖啡",
+                "image": "https://api.mk-coffee.cn/static/products/drip_baxi.jpg",
                 "category": "挂耳咖啡",
-                "description": "商品信息待补充",
-                "price": 39.00,
-                "stock": 10,
-                "specs": [("10袋装", 39.00, 10)],
+                "description": "坚果、可可、焦糖风味，日晒处理",
+                "price": 59.00,
+                "stock": 30,
+                "specs": [("10袋装", 59.00, 30)],
             },
         ]
 
@@ -150,14 +158,30 @@ class Command(BaseCommand):
                     "image": item.get("image", ""),
                 },
             )
-            if created:
-                for spec_name, spec_price, spec_stock in item["specs"]:
-                    Spec.objects.create(
-                        product=product,
-                        name=spec_name,
-                        price=spec_price,
-                        stock=spec_stock,
-                    )
+            # 同步规格：删除重建（CartItem/OrderItem 对 spec 均为 SET_NULL，安全）
+            product.specs.all().delete()
+            for spec_name, spec_price, spec_stock in item["specs"]:
+                Spec.objects.create(
+                    product=product,
+                    name=spec_name,
+                    price=spec_price,
+                    stock=spec_stock,
+                )
             self.stdout.write(f"  {'✓' if created else '↻'} 商品: {item['name']}")
+
+        # === 下架同事清单外的旧商品（保留数据，可恢复）===
+        down_list = [
+            ("埃塞俄比亚 耶加雪菲", "袋装咖啡豆"),
+            ("哥伦比亚 蕙兰", "袋装咖啡豆"),
+            ("巴西 喜拉多", "罐装咖啡豆"),
+            ("定制拼配·深烘", "定制烘焙咖啡豆"),
+            ("定制拼配·中烘", "定制烘焙咖啡豆"),
+        ]
+        for name, cat_name in down_list:
+            n = Product.objects.filter(
+                name=name, category=cat_objs[cat_name]
+            ).update(status="off")
+            if n:
+                self.stdout.write(f"  ✗ 下架: {name}")
 
         self.stdout.write(self.style.SUCCESS(f"\n种子数据完成: {Category.objects.count()} 分类, {Product.objects.count()} 商品"))

@@ -41,3 +41,7 @@ db.sqlite3
 # Internal planning docs (keep local only)
 PLAN.md
 YourWorkNow.md
+
+# 同事资料（本地保留，不上库）
+backend/products/产品分类与价格.md
+backend/products/小程序主页主图/

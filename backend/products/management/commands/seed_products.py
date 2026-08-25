@@ -30,14 +30,13 @@ class Command(BaseCommand):
             cat_objs[name] = obj
             self.stdout.write(f"  {'✓' if created else '·'} 分类: {name}")
 
-        # === 清理旧挂耳占位商品（已被真实挂耳商品取代）===
+        # === 旧挂耳占位商品：下架而非删除（有历史订单引用的不能删，置 off 隐藏）===
         stale = Product.objects.filter(
             category=cat_objs["挂耳咖啡"], name__regex=r"^挂耳咖啡 \d+$"
         )
-        if stale.exists():
-            n = stale.count()
-            stale.delete()
-            self.stdout.write(f"  ✗ 删除旧挂耳占位商品: {n} 个")
+        n = stale.update(status="off")
+        if n:
+            self.stdout.write(f"  ✗ 下架旧挂耳占位商品: {n} 个")
 
         # === 旧名 → 同事命名 迁移（保留商品 id，订单引用不断）===
         rename_map = [

@@ -279,6 +279,33 @@ class PublicKeyCallbackSignTest(TestCase):
         headers["Wechatpay-Signature"] = base64.b64encode(b"bad-sig").decode()
         self.assertFalse(self.client.verify_callback_sign(headers, body))
 
+    def test_verify_with_public_key_file_path(self):
+        """公钥支持文件路径（与私钥一致，避免 .env 多行转义）"""
+        import tempfile
+
+        pub_pem = self.pub_pair.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode()
+        fd, path = tempfile.mkstemp(suffix=".pem")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(pub_pem)
+            client = WXPayClient(
+                mch_id="mch_test",
+                api_v3_key="k" * 32,
+                serial_no="mch_serial",
+                private_key_pem=_private_pem(_make_key_pair()),
+                app_id="wx_test",
+                notify_url="https://example.com/cb/",
+                public_key_pem=path,
+                public_key_id="WX_PUBKEY_ID_TEST",
+            )
+            body = '{"ok":1}'
+            self.assertTrue(client.verify_callback_sign(self._headers(body), body))
+        finally:
+            os.unlink(path)
+
 
 # ==================== 支付入口 ====================
 

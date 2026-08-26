@@ -65,6 +65,15 @@ class WXPayClient:
         self.notify_url = notify_url
         self.cert_path = cert_path
         # 微信支付公钥模式（2024 起新商户无平台证书，用公钥验签）
+        # 支持 PEM 原文或文件路径（路径方式避免 .env 多行转义问题）
+        if public_key_pem:
+            pk = public_key_pem.strip()
+            if not pk.startswith("-----BEGIN"):
+                try:
+                    with open(pk, "r", encoding="utf-8") as f:
+                        public_key_pem = f.read().strip()
+                except OSError as e:
+                    raise WXPayError(f"微信支付公钥文件读取失败: {e}")
         self.public_key_pem = public_key_pem
         self.public_key_id = public_key_id
         self._certs = None  # 实例级平台证书缓存 {serial_no: pem}

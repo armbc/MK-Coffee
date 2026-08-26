@@ -60,8 +60,7 @@
   <view class="brand-footer">
     <text class="brand-name">MK-Coffee 迈科咖啡</text>
     <text class="brand-version">v1.0.0</text>
-    <!-- 备案号待补充：拿到真实 ICP 备案号后替换（TESTING.md 审核 checklist #6） -->
-    <text class="brand-icp">苏ICP备XXXXXXXX号</text>
+    <text class="brand-icp">苏ICP备2026059759号</text>
   </view>
 
   <!-- 编辑资料弹窗 -->

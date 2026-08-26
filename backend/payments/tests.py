@@ -226,6 +226,60 @@ class CallbackSignVerifyTest(TestCase):
         self.assertFalse(self.client.verify_callback_sign(headers, body))
 
 
+class PublicKeyCallbackSignTest(TestCase):
+    """微信支付公钥模式验签（2024 起新商户无平台证书，改用公钥）"""
+
+    def setUp(self):
+        self.pub_pair = _make_key_pair()
+        pub_pem = self.pub_pair.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode()
+        self.client = WXPayClient(
+            mch_id="mch_test",
+            api_v3_key="k" * 32,
+            serial_no="mch_serial",
+            private_key_pem=_private_pem(_make_key_pair()),
+            app_id="wx_test",
+            notify_url="https://example.com/cb/",
+            public_key_pem=pub_pem,
+            public_key_id="WX_PUBKEY_ID_TEST",
+        )
+
+    def _headers(self, body, serial="WX_PUBKEY_ID_TEST", sign_key=None):
+        ts = str(int(time.time()))
+        nonce = "pubkeynonce1"
+        key = sign_key or self.pub_pair
+        sign_str = f"{ts}\n{nonce}\n{body}\n"
+        signature = base64.b64encode(
+            key.sign(sign_str.encode("utf-8"), padding.PKCS1v15(), hashes.SHA256())
+        ).decode()
+        return {
+            "Wechatpay-Timestamp": ts,
+            "Wechatpay-Nonce": nonce,
+            "Wechatpay-Signature": signature,
+            "Wechatpay-Serial": serial,
+        }
+
+    def test_verify_success_with_public_key(self):
+        body = '{"event_type":"TRANSACTION.SUCCESS"}'
+        self.assertTrue(self.client.verify_callback_sign(self._headers(body), body))
+
+    def test_reject_wrong_public_key_id(self):
+        body = '{"x":1}'
+        self.assertFalse(
+            self.client.verify_callback_sign(
+                self._headers(body, serial="WRONG_ID"), body
+            )
+        )
+
+    def test_reject_bad_signature(self):
+        body = '{"x":1}'
+        headers = self._headers(body)
+        headers["Wechatpay-Signature"] = base64.b64encode(b"bad-sig").decode()
+        self.assertFalse(self.client.verify_callback_sign(headers, body))
+
+
 # ==================== 支付入口 ====================
 
 

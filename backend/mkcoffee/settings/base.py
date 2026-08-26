@@ -174,6 +174,12 @@ WXPAY_SERIAL_NO = os.getenv("WXPAY_SERIAL_NO", "")
 WXPAY_PRIVATE_KEY = os.getenv("WXPAY_PRIVATE_KEY", "")
 WXPAY_NOTIFY_URL = os.getenv("WXPAY_NOTIFY_URL", "")
 
+# 微信支付公钥模式（2024 起新商户无平台证书，改用公钥验签）
+# WXPAY_PUBLIC_KEY：商户平台 → API 安全 → 微信支付公钥（PEM 原文）
+# WXPAY_PUBLIC_KEY_ID：同一页面上的公钥 ID（验签时校验 Wechatpay-Serial）
+WXPAY_PUBLIC_KEY = os.getenv("WXPAY_PUBLIC_KEY", "")
+WXPAY_PUBLIC_KEY_ID = os.getenv("WXPAY_PUBLIC_KEY_ID", "")
+
 # 企业微信群机器人 webhook（订单支付成功通知；留空则不推送）
 WECOM_WEBHOOK_URL = os.getenv("WECOM_WEBHOOK_URL", "")
 WXPAY_CERT_PATH = os.getenv("WXPAY_CERT_PATH", "")

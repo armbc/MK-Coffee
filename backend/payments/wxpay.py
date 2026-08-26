@@ -55,6 +55,8 @@ class WXPayClient:
         app_id: str,
         notify_url: str,
         cert_path: str = "",
+        public_key_pem: str = "",
+        public_key_id: str = "",
     ):
         self.mch_id = mch_id
         self.api_v3_key = api_v3_key
@@ -62,6 +64,9 @@ class WXPayClient:
         self.app_id = app_id
         self.notify_url = notify_url
         self.cert_path = cert_path
+        # 微信支付公钥模式（2024 起新商户无平台证书，用公钥验签）
+        self.public_key_pem = public_key_pem
+        self.public_key_id = public_key_id
         self._certs = None  # 实例级平台证书缓存 {serial_no: pem}
 
         # APIv3 密钥必须是 32 字节，提前校验避免运行时才暴露
@@ -314,6 +319,32 @@ class WXPayClient:
 
         sign_str = f"{timestamp}\n{nonce}\n{body}\n"
 
+        # 微信支付公钥模式（新商户无平台证书，优先用公钥验签）
+        if self.public_key_pem:
+            if not self.public_key_id or serial != self.public_key_id:
+                logger.warning(
+                    "回调公钥ID不匹配: %s != %s", serial, self.public_key_id
+                )
+                return False
+            try:
+                pub = serialization.load_pem_public_key(
+                    self.public_key_pem.encode("utf-8")
+                )
+                pub.verify(
+                    base64.b64decode(signature),
+                    sign_str.encode("utf-8"),
+                    padding.PKCS1v15(),
+                    hashes.SHA256(),
+                )
+                return True
+            except InvalidSignature:
+                logger.warning("回调签名校验失败")
+                return False
+            except Exception as e:
+                logger.error("回调验签异常: %s", e)
+                return False
+
+        # 老模式：微信支付平台证书验签
         certs = self._get_platform_certificates(serial)
         pem = certs.get(serial)
         if not pem:
@@ -388,12 +419,27 @@ def get_wxpay_client() -> Optional[WXPayClient]:
         "WXPAY_PRIVATE_KEY": getattr(settings, "WXPAY_PRIVATE_KEY", "") or "",
         "WX_APP_ID": getattr(settings, "WX_APP_ID", "") or "",
         "WXPAY_NOTIFY_URL": getattr(settings, "WXPAY_NOTIFY_URL", "") or "",
+        "WXPAY_PUBLIC_KEY": getattr(settings, "WXPAY_PUBLIC_KEY", "") or "",
+        "WXPAY_PUBLIC_KEY_ID": getattr(settings, "WXPAY_PUBLIC_KEY_ID", "") or "",
     }
-    missing = [name for name, value in conf.items() if not value]
+    # 核心必填变量（fail-closed）；公钥/公钥ID 为可选增强（老商户走平台证书）
+    required = [
+        "WXPAY_MCH_ID",
+        "WXPAY_API_V3_KEY",
+        "WXPAY_SERIAL_NO",
+        "WXPAY_PRIVATE_KEY",
+        "WX_APP_ID",
+        "WXPAY_NOTIFY_URL",
+    ]
+    missing = [name for name in required if not conf[name]]
     if missing:
         raise WXPayError(
             f"WXPAY_ENABLED=true 但配置缺失: {', '.join(missing)}"
         )
+
+    # 公钥配对校验：配了公钥必须配公钥ID（否则回调验签必然失败）
+    if conf["WXPAY_PUBLIC_KEY"] and not conf["WXPAY_PUBLIC_KEY_ID"]:
+        raise WXPayError("配置了 WXPAY_PUBLIC_KEY 但缺少 WXPAY_PUBLIC_KEY_ID")
 
     cert_path = getattr(settings, "WXPAY_CERT_PATH", "") or ""
     if not cert_path:
@@ -410,6 +456,8 @@ def get_wxpay_client() -> Optional[WXPayClient]:
             app_id=conf["WX_APP_ID"],
             notify_url=conf["WXPAY_NOTIFY_URL"],
             cert_path=cert_path,
+            public_key_pem=conf["WXPAY_PUBLIC_KEY"],
+            public_key_id=conf["WXPAY_PUBLIC_KEY_ID"],
         )
     except WXPayError:
         raise

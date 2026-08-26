@@ -1,7 +1,7 @@
 # 微信支付接入指南 💳
 
 > **用途**：迈科咖啡小程序从「模拟支付」切换到「微信支付 V3」的完整操作手册。
-> **状态**：模拟支付运行中（`WXPAY_ENABLED=false`）｜商户号待申请
+> **状态**：✅ 真实支付已配置（2026-08-26，商户号 1110736757，待真机验证）
 > 最后更新：2026-08-26
 
 ---
@@ -79,10 +79,12 @@ WXPAY_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 
 > ⚠️ **私钥格式**：代码同时支持 PEM 原文和文件路径两种方式。`.env` 文件格式不支持多行值，PEM 原文需用 `\n` 转义；**推荐方式二**——把 `apiclient_key.pem` 放到腾服 `~/MK-Coffee/backend/wxpay/` 目录（docker-compose 已挂载到容器 `/app/wxpay/`，该目录在 `.gitignore` 中，不会入库），`WXPAY_PRIVATE_KEY` 填 `/app/wxpay/apiclient_key.pem` 即可。
 
-### 2. 重启 backend 使配置生效
+### 2. 重新创建 backend 容器使配置生效
+
+> ⚠️ 不能用 `docker compose restart`（restart 不重新加载 .env，环境变量在容器创建时注入）。
 
 ```bash
-cd ~/MK-Coffee && docker compose restart backend
+cd ~/MK-Coffee && docker compose up -d backend
 ```
 
 ### 3. 验证配置加载成功
@@ -123,7 +125,7 @@ docker compose logs backend --tail 30
 
 ```bash
 # .env 里改 WXPAY_ENABLED=false 后
-docker compose restart backend
+cd ~/MK-Coffee && docker compose up -d backend
 ```
 
 ---

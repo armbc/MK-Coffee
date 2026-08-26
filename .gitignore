@@ -36,6 +36,9 @@ Thumbs.db
 # 微信支付商户私钥（生产敏感文件，勿提交）
 backend/wxpay/
 
+# 微信支付商户证书（本地敏感文件，勿提交）
+.cert/
+
 # Database
 *.sqlite3
 db.sqlite3

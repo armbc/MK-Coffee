@@ -1,5 +1,6 @@
 """优惠券模块 · 测试"""
 from datetime import timedelta
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -86,3 +87,56 @@ class CouponTestCase(TestCase):
         unauth = APIClient()
         resp = unauth.post(f"/api/coupons/{self.active_coupon.id}/claim/")
         self.assertEqual(resp.status_code, 401)
+
+
+class SeedCouponsCommandTest(TestCase):
+    """seed_coupons：重建 5 张运营券模板（与 COUPONS.md 台账一致）"""
+
+    def test_seed_creates_five_templates(self):
+        call_command("seed_coupons")
+        self.assertEqual(Coupon.objects.count(), 5)
+
+        # 新人券：折扣 9 折、无门槛
+        newbie = Coupon.objects.get(name="新人券")
+        self.assertEqual(newbie.type, "discount")
+        self.assertEqual(newbie.value, 9)
+        self.assertEqual(newbie.min_amount, 0)
+        self.assertEqual(newbie.stock, 200)
+        self.assertEqual(newbie.status, "active")
+
+        # 满减券：减 15、门槛 100
+        bean = Coupon.objects.get(name="咖啡豆满减券")
+        self.assertEqual(bean.type, "full_reduce")
+        self.assertEqual(bean.value, 15)
+        self.assertEqual(bean.min_amount, 100)
+        self.assertEqual(bean.stock, 300)
+
+        # 复购折扣券：8.8 折、满 80
+        repurchase = Coupon.objects.get(name="复购折扣券")
+        self.assertEqual(repurchase.type, "discount")
+        self.assertEqual(repurchase.value, 88)
+        self.assertEqual(repurchase.min_amount, 80)
+
+    def test_seed_idempotent(self):
+        """重复执行不重复创建"""
+        call_command("seed_coupons")
+        call_command("seed_coupons")
+        self.assertEqual(Coupon.objects.count(), 5)
+
+    def test_seed_updates_existing_template(self):
+        """已存在的同名券按台账参数更新（对齐有效期/库存/状态）"""
+        now = timezone.now()
+        Coupon.objects.create(
+            name="新人券", type="full_reduce", value=5,
+            min_amount=50, stock=10,
+            start_date=now, end_date=now + timedelta(days=3),
+            status="inactive",
+        )
+        call_command("seed_coupons")
+        newbie = Coupon.objects.get(name="新人券")
+        self.assertEqual(Coupon.objects.filter(name="新人券").count(), 1)
+        self.assertEqual(newbie.type, "discount")
+        self.assertEqual(newbie.value, 9)
+        self.assertEqual(newbie.min_amount, 0)
+        self.assertEqual(newbie.stock, 200)
+        self.assertEqual(newbie.status, "active")

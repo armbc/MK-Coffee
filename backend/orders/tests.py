@@ -1,4 +1,5 @@
 """订单模块 · 测试"""
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -808,3 +809,35 @@ class OrderBackToCartAPITest(TestCase):
         order = Order.objects.create(user=other, total=88.00, status="pending")
         resp = self.client.post(reverse("order-back-to-cart", args=[order.id]))
         self.assertEqual(resp.status_code, 404)
+
+
+class ClearTestDataCommandTest(TestCase):
+    """clear_test_data：清测试数据，但必须保留优惠券模板（运营配置）"""
+
+    def test_clear_keeps_coupon_templates(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from coupons.models import Coupon, UserCoupon
+
+        now = timezone.now()
+        coupon = Coupon.objects.create(
+            name="满100减20", type="full_reduce", value=20,
+            min_amount=100, stock=100,
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=7),
+            status="active",
+        )
+        user = User.objects.create(openid="clear_test_user")
+        UserCoupon.objects.create(user=user, coupon=coupon)
+        Order.objects.create(user=user, total=88.00, status="pending")
+
+        call_command("clear_test_data")
+
+        # 优惠券模板保留、参数不变
+        self.assertEqual(Coupon.objects.filter(pk=coupon.pk).count(), 1)
+        self.assertEqual(Coupon.objects.get(pk=coupon.pk).name, "满100减20")
+        # 用户/订单/领取记录被清空
+        self.assertEqual(User.objects.count(), 0)
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(UserCoupon.objects.count(), 0)

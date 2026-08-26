@@ -48,5 +48,11 @@
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在门店地图中显示您的位置，以便导航到迈科咖啡门店"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"]
 }

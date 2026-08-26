@@ -88,6 +88,23 @@ class CouponTestCase(TestCase):
         resp = unauth.post(f"/api/coupons/{self.active_coupon.id}/claim/")
         self.assertEqual(resp.status_code, 401)
 
+    def test_value_text_display(self):
+        """折扣显示：9→9折、88→8.8折、85→8.5折；满减显示 ¥X"""
+        now = timezone.now()
+        cases = [
+            ("满100减20", "full_reduce", 20, "¥20"),
+            ("新人券", "discount", 9, "9折"),
+            ("复购折扣券", "discount", 88, "8.8折"),
+            ("85折券", "discount", 85, "8.5折"),
+        ]
+        for name, ctype, value, expected in cases:
+            c = Coupon.objects.create(
+                name=name, type=ctype, value=value,
+                min_amount=0, stock=1,
+                start_date=now, end_date=now + timedelta(days=1),
+            )
+            self.assertEqual(c.value_text, expected, f"{name} 应显示 {expected}")
+
 
 class SeedCouponsCommandTest(TestCase):
     """seed_coupons：重建 5 张运营券模板（与 COUPONS.md 台账一致）"""

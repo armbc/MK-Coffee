@@ -130,3 +130,4 @@
 }
 .brand-name { font-size: 24rpx; color: #b0a59a; }
 .brand-version { font-size: 20rpx; color: #d5cdc3; margin-top: 4rpx; }
+.brand-icp { font-size: 20rpx; color: #d5cdc3; margin-top: 4rpx; }

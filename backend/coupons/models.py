@@ -1,4 +1,6 @@
 """优惠券模块 · 模型"""
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
@@ -45,9 +47,13 @@ class Coupon(models.Model):
 
     @property
     def value_text(self):
+        v = Decimal(self.value)
         if self.type == "full_reduce":
-            return f"¥{int(self.value)}"
-        return f"{int(self.value)}折"
+            return f"¥{int(v)}"
+        # 折扣：value 为折数（9 = 9折），带小数的按 ×10 存（88 = 8.8折、85 = 8.5折）
+        if v >= 10:
+            return f"{(v / 10).normalize()}折"
+        return f"{int(v)}折"
 
 
 class UserCoupon(models.Model):

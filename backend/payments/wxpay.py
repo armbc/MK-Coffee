@@ -288,6 +288,29 @@ class WXPayClient:
         logger.info("已更新 %d 个微信支付平台证书", len(certs))
         return merged
 
+    def _fetch_wxpay_public_key(self) -> Optional[dict]:
+        """
+        获取微信支付公钥（GET /v3/certificates/public-key）。
+
+        2024 起新商户无平台证书，改用微信支付公钥验签；公钥可通过
+        接口自动拉取（商户私钥签名），无需手动下载/配置。
+
+        Returns:
+            {"serial_no": ..., "public_key": ...}；失败返回 None
+        """
+        try:
+            result = self._request("GET", "/v3/certificates/public-key")
+        except Exception as e:
+            logger.error("获取微信支付公钥失败: %s", e)
+            return None
+        for item in result.get("data", []):
+            if item.get("public_key"):
+                return {
+                    "serial_no": item.get("serial_no", ""),
+                    "public_key": item.get("public_key", "").strip(),
+                }
+        return None
+
     def _get_platform_certificates(self, serial: str = "") -> dict:
         """获取平台证书；本地缺少指定序列号时刷新一次（证书轮换场景）"""
         certs = self._load_cached_certificates()
@@ -329,15 +352,24 @@ class WXPayClient:
         sign_str = f"{timestamp}\n{nonce}\n{body}\n"
 
         # 微信支付公钥模式（新商户无平台证书，优先用公钥验签）
-        if self.public_key_pem:
-            if not self.public_key_id or serial != self.public_key_id:
+        if self.public_key_id:
+            if serial != self.public_key_id:
                 logger.warning(
                     "回调公钥ID不匹配: %s != %s", serial, self.public_key_id
                 )
                 return False
+            pem = self.public_key_pem
+            if not pem:
+                # 未配置公钥内容时自动拉取（接口需商户私钥签名）
+                fetched = self._fetch_wxpay_public_key()
+                if not fetched or fetched["serial_no"] != self.public_key_id:
+                    logger.error("自动获取微信支付公钥失败或公钥ID不匹配")
+                    return False
+                pem = fetched["public_key"]
+                self.public_key_pem = pem  # 实例缓存，避免重复拉取
             try:
                 pub = serialization.load_pem_public_key(
-                    self.public_key_pem.encode("utf-8")
+                    pem.encode("utf-8")
                 )
                 pub.verify(
                     base64.b64decode(signature),

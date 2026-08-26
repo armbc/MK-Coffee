@@ -3,6 +3,7 @@
 覆盖：
 - get_wxpay_client 的 fail-closed 行为（防止静默降级为模拟支付）
 - 微信支付回调验签（平台证书 RSA-SHA256 + 防重放时间戳）
+- 微信支付公钥模式验签（2024 起新商户）及公钥自动拉取
 - 支付入口：模拟支付 / 启用微信支付但配置错误时拒绝支付
 - 支付回调端到端：验签 → 解密 → 商户/金额校验 → 更新订单
 """
@@ -13,6 +14,7 @@ import os
 import tempfile
 import time
 from decimal import Decimal
+from unittest import mock
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -305,6 +307,49 @@ class PublicKeyCallbackSignTest(TestCase):
             self.assertTrue(client.verify_callback_sign(self._headers(body), body))
         finally:
             os.unlink(path)
+
+    def test_auto_fetch_public_key_when_missing(self):
+        """只配公钥ID、未配公钥内容时，自动拉取微信支付公钥验签"""
+        pub_pem = self.pub_pair.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode()
+        client = WXPayClient(
+            mch_id="mch_test",
+            api_v3_key="k" * 32,
+            serial_no="mch_serial",
+            private_key_pem=_private_pem(_make_key_pair()),
+            app_id="wx_test",
+            notify_url="https://example.com/cb/",
+            public_key_id="WX_PUBKEY_ID_TEST",
+        )
+        with mock.patch.object(
+            client,
+            "_fetch_wxpay_public_key",
+            return_value={
+                "serial_no": "WX_PUBKEY_ID_TEST",
+                "public_key": pub_pem,
+            },
+        ):
+            body = '{"ok":1}'
+            self.assertTrue(client.verify_callback_sign(self._headers(body), body))
+            # 拉取后实例缓存，不重复请求
+            self.assertEqual(client.public_key_pem, pub_pem)
+
+    def test_auto_fetch_failure_rejects(self):
+        """自动拉取失败时拒绝回调（fail-closed）"""
+        client = WXPayClient(
+            mch_id="mch_test",
+            api_v3_key="k" * 32,
+            serial_no="mch_serial",
+            private_key_pem=_private_pem(_make_key_pair()),
+            app_id="wx_test",
+            notify_url="https://example.com/cb/",
+            public_key_id="WX_PUBKEY_ID_TEST",
+        )
+        with mock.patch.object(client, "_fetch_wxpay_public_key", return_value=None):
+            body = '{"ok":1}'
+            self.assertFalse(client.verify_callback_sign(self._headers(body), body))
 
 
 # ==================== 支付入口 ====================

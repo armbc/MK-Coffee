@@ -69,9 +69,17 @@ class WXPayClient:
             raise WXPayError("WXPAY_API_V3_KEY 必须为 32 字节")
 
         # 加载商户私钥
+        # 支持 PEM 原文或文件路径（路径方式避免 .env 多行转义问题）
+        pem = (private_key_pem or "").strip()
+        if not pem.startswith("-----BEGIN"):
+            try:
+                with open(pem, "r", encoding="utf-8") as f:
+                    pem = f.read().strip()
+            except OSError as e:
+                raise WXPayError(f"商户私钥文件读取失败: {e}")
         try:
             self._private_key = serialization.load_pem_private_key(
-                private_key_pem.encode("utf-8"),
+                pem.encode("utf-8"),
                 password=None,
             )
         except Exception as e:

@@ -33,6 +33,9 @@ Thumbs.db
 .env.*
 !.env.example
 
+# 微信支付商户私钥（生产敏感文件，勿提交）
+backend/wxpay/
+
 # Database
 *.sqlite3
 db.sqlite3

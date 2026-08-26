@@ -120,6 +120,39 @@ class GetWXPayClientTest(TestCase):
                 notify_url="https://example.com/cb/",
             )
 
+    def test_private_key_supports_file_path(self):
+        """WXPAY_PRIVATE_KEY 可传 PEM 文件路径（避免 .env 多行转义问题）"""
+        import tempfile
+
+        pem = _private_pem(_make_key_pair())
+        fd, path = tempfile.mkstemp(suffix=".pem")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(pem)
+            client = WXPayClient(
+                mch_id="m",
+                api_v3_key="k" * 32,
+                serial_no="s",
+                private_key_pem=path,
+                app_id="a",
+                notify_url="https://example.com/cb/",
+            )
+            self.assertIsInstance(client, WXPayClient)
+        finally:
+            os.unlink(path)
+
+    def test_private_key_missing_file_raises(self):
+        """路径不存在时报错（fail-closed，不静默降级）"""
+        with self.assertRaises(WXPayError):
+            WXPayClient(
+                mch_id="m",
+                api_v3_key="k" * 32,
+                serial_no="s",
+                private_key_pem="/nonexistent/missing.pem",
+                app_id="a",
+                notify_url="https://example.com/cb/",
+            )
+
 
 # ==================== 回调验签 ====================
 

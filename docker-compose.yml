@@ -48,9 +48,6 @@ services:
       - DJANGO_ENV=production
       - DB_HOST=db
       - DB_SOCKET=
-    # 微信支付商户私钥目录（WXPAY_PRIVATE_KEY 传路径时读取；文件不入 git）
-    volumes:
-      - ./backend/wxpay:/app/wxpay:ro
     depends_on:
       db:
         condition: service_healthy
@@ -63,6 +60,8 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      # 微信支付商户私钥目录（WXPAY_PRIVATE_KEY 传路径时读取；文件不入 git）
+      - ./backend/wxpay:/app/wxpay:ro
     restart: unless-stopped
     deploy:
       resources:

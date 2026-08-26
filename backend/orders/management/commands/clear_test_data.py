@@ -1,4 +1,4 @@
-"""清除测试数据：订单/购物车/用户优惠券/地址/用户（保留商品、分类与优惠券模板）"""
+"""清除测试数据：订单/购物车/用户优惠券/地址/普通用户（保留商品、分类、优惠券模板与管理员账号）"""
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
@@ -9,7 +9,7 @@ from users.models import Address
 
 
 class Command(BaseCommand):
-    help = "清除测试数据：订单/购物车/用户优惠券/地址/用户（保留商品、分类与优惠券模板）"
+    help = "清除测试数据：订单/购物车/用户优惠券/地址/普通用户（保留商品、分类、优惠券模板与管理员账号）"
 
     def handle(self, *args, **options):
         counters = {}
@@ -26,8 +26,13 @@ class Command(BaseCommand):
             qs.delete()
 
         User = get_user_model()
-        counters["用户"] = User.objects.count()
-        User.objects.all().delete()
+        # 只删普通用户，保留管理员（is_staff=True），避免误删后台账号
+        non_staff = User.objects.filter(is_staff=False)
+        counters["用户"] = non_staff.count()
+        non_staff.delete()
+        self.stdout.write(
+            f"  ✓ 保留管理员账号: {User.objects.filter(is_staff=True).count()} 个"
+        )
 
         for label, n in counters.items():
             if n:

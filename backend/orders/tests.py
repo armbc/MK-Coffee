@@ -841,3 +841,29 @@ class ClearTestDataCommandTest(TestCase):
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(Order.objects.count(), 0)
         self.assertEqual(UserCoupon.objects.count(), 0)
+
+    def test_clear_keeps_admin_account(self):
+        """清测试数据必须保留管理员账号（后台登录不被误删）"""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from coupons.models import Coupon, UserCoupon
+
+        admin = User.objects.create_superuser(openid="admin", password="x")
+        normal = User.objects.create(openid="clear_test_normal")
+        UserCoupon.objects.create(
+            user=normal,
+            coupon=Coupon.objects.create(
+                name="券", type="full_reduce", value=10,
+                min_amount=50, stock=1,
+                start_date=timezone.now(),
+                end_date=timezone.now() + timedelta(days=1),
+            ),
+        )
+
+        call_command("clear_test_data")
+
+        # 管理员保留、可继续登录后台
+        self.assertTrue(User.objects.filter(pk=admin.pk, is_staff=True).exists())
+        self.assertFalse(User.objects.filter(openid="clear_test_normal").exists())

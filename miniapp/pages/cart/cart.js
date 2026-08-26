@@ -217,6 +217,17 @@ Page({
               coupon_id: coupon ? coupon.id : null,
             }).then(data => {
               wx.showToast({ title: '下单成功', icon: 'success' })
+              // 下单即清购物车（后端已删除）：立即清空本地显示，
+              // 用户切回购物车 tab 时不再看到旧数据（无需等待重新拉取）
+              this.setData({
+                items: [],
+                total: '0.00',
+                allSelected: false,
+                selectedCoupon: null,
+                couponDiscount: '0.00',
+                payable: '0.00',
+                coupons: [],
+              })
               // order 是 tabBar 页面，switchTab 不支持传参
               // 通过 app 全局变量传递最新订单 ID
               app.globalData.newOrderId = data.id

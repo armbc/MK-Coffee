@@ -54,3 +54,8 @@ backend/products/小程序主页主图/
 
 # mp 后台/备案操作截图（本地查看用，含会话信息，勿提交）
 backend/[0-9][0-9].png
+
+# 法人证件/资质材料（敏感，本地保留，勿提交）
+backend/陈东*.jpg
+backend/陈东*.jpeg
+backend/陈东*.png

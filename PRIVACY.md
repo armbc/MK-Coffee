@@ -49,7 +49,7 @@
 | `app.json` `permission.scope.userLocation.desc`（定位授权文案） | ✅ 已配（`43eca47`） |
 | `app.json` `requiredPrivateInfos: ["getLocation"]`（隐私接口声明） | ✅ 已配（`43eca47`） |
 | 备案号展示（user 页 footer） | ✅ `ICP备案号：苏ICP备2026059759号-2X`（小程序备案编号，2026-09-11 更新） |
-| 小程序内协议 | ✅ 新增 `pages/agreement`（用户服务协议 14 章 / 隐私政策 9 章，约 3000 字）+ 首页首次进入同意弹窗（同意后才可用，未同意时可退出）+ user 页 footer 常驻入口（2026-09-11，应审核驳回「常见拒绝情形 3.4」） |
+| 小程序内协议 | ✅ `pages/agreement`（用户服务协议 14 章 / 隐私政策 9 章，约 3000 字）；同意机制：**登录前**弹确认弹窗（组件 `components/agreement-modal`，可点开协议全文）+ 首页底部提示条（未同意时显示）+ user 页 footer 常驻入口 + `app.wxLogin()` 兜底校验（2026-09-11，应审核驳回「常见拒绝情形 3.4」） |
 | 版本号 | ✅ v1.0.2 |
 
 ---

@@ -1,6 +1,7 @@
 import api from '../../utils/api'
 const app = getApp()
 const swipe = require('../../utils/swipe-tab').bind('/pages/user/user')
+const agreement = require('../../utils/agreement')
 
 Page({
   onSwipeStart: swipe.onSwipeStart,
@@ -11,6 +12,8 @@ Page({
     maxWidth: 0,
     /** 编辑资料弹窗 */
     showEdit: false,
+    /** 协议确认弹窗（登录前） */
+    showAgreementModal: false,
     editNickname: '',
     editAvatar: '',
     saving: false,
@@ -28,6 +31,28 @@ Page({
   },
 
   doLogin() {
+    // 微信审核要求（常见拒绝情形 3.4）：收集用户信息前须取得协议同意
+    if (!agreement.isAccepted()) {
+      this.setData({ showAgreementModal: true })
+      return
+    }
+    this._login()
+  },
+
+  /** 协议弹窗：同意后继续登录 */
+  onAgreeModal() {
+    agreement.accept()
+    this.setData({ showAgreementModal: false })
+    this._login()
+  },
+
+  onDisagreeModal() {
+    this.setData({ showAgreementModal: false })
+    wx.showToast({ title: '需同意协议后才能登录', icon: 'none' })
+  },
+
+  /** 实际登录（wx.login → 后端换 JWT） */
+  _login() {
     wx.showLoading({ title: '登录中...', mask: true })
     app.wxLogin().then(user => {
       wx.hideLoading()

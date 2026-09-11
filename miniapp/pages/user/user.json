@@ -1,1 +1,5 @@
-{}
+{
+  "usingComponents": {
+    "agreement-modal": "/components/agreement-modal/index"
+  }
+}

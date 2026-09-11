@@ -2,9 +2,7 @@ import api from '../../utils/api'
 const app = getApp()
 const swipe = require('../../utils/swipe-tab').bind('/pages/index/index')
 
-/** 协议同意状态：存储 key 与版本号（文本更新时改变版本号会重新提示） */
-const AGREEMENT_KEY = 'agreementAccepted'
-const AGREEMENT_VERSION = '2026-09-11'
+const agreement = require('../../utils/agreement')
 
 Page({
   onSwipeStart: swipe.onSwipeStart,
@@ -18,8 +16,8 @@ Page({
     products: [],
     activeCategory: 0,
     loading: true,
-    /** 协议同意弹窗（微信审核要求 3.4：收集用户信息前需取得授权同意） */
-    showAgreement: false,
+    /** 协议同意状态：未同意时底部显示提示条（登录时会再次强制确认） */
+    agreed: true,
     /** 响应式 */
     gridCols: 2,
     maxWidth: 0,
@@ -36,37 +34,15 @@ Page({
         cardGap: cols >= 4 ? 24 : 20,
       })
     }
-    this.checkAgreement()
+    this.setData({ agreed: agreement.isAccepted() })
     this.fetchCategories()
     this.fetchProducts()
   },
 
-  /** 首次进入需先同意《用户服务协议》与《隐私政策》 */
-  checkAgreement() {
-    if (wx.getStorageSync(AGREEMENT_KEY) === AGREEMENT_VERSION) return
-    // 隐藏 tabBar，避免原生 tabBar 遮盖弹窗、或被绕过
-    wx.hideTabBar({ animation: false, fail: () => {} })
-    this.setData({ showAgreement: true })
-  },
-
-  onAgree() {
-    wx.setStorageSync(AGREEMENT_KEY, AGREEMENT_VERSION)
-    wx.showTabBar({ animation: false, fail: () => {} })
-    this.setData({ showAgreement: false })
-  },
-
-  onDisagree() {
-    wx.showModal({
-      title: '提示',
-      content: '需要同意《用户服务协议》和《隐私政策》后才能使用迈科咖啡小程序。',
-      confirmText: '退出',
-      cancelText: '再想想',
-      success: (res) => {
-        if (res.confirm) {
-          wx.exitMiniProgram({ fail: () => {} })
-        }
-      },
-    })
+  /** 底部提示条：「同意」即记录同意状态（正式的同意校验在登录前） */
+  onAgreeBar() {
+    agreement.accept()
+    this.setData({ agreed: true })
   },
 
   goUserAgreement() {
@@ -76,8 +52,6 @@ Page({
   goPrivacyPolicy() {
     wx.navigateTo({ url: '/pages/agreement/agreement?type=privacy' })
   },
-
-  noop() {},
 
   fetchCategories() {
     api.get('/categories/').then(data => {

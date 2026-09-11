@@ -2,6 +2,8 @@
  * 迈科咖啡 · 小程序入口
  * 基础库版本要求：≥ 2.18.0
  */
+const agreement = require('./utils/agreement')
+
 App({
   onLaunch() {
     // 设备检测（使用新版 API，兼容旧版）
@@ -65,6 +67,11 @@ App({
   /** 微信登录：code → 后端换取 JWT */
   wxLogin() {
     return new Promise((resolve, reject) => {
+      // 兜底校验：任何入口登录前都需已同意《用户服务协议》与《隐私政策》
+      if (!agreement.isAccepted()) {
+        reject({ code: 'NEED_AGREEMENT', msg: '请先阅读并同意《用户服务协议》和《隐私政策》' })
+        return
+      }
       wx.login({
         success: (loginRes) => {
           if (!loginRes.code) {

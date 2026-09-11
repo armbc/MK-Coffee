@@ -87,4 +87,7 @@
       </view>
     </view>
   </view>
+
+  <!-- 登录前协议确认（未同意时登录按钮触发） -->
+  <agreement-modal show="{{showAgreementModal}}" bind:agree="onAgreeModal" bind:disagree="onDisagreeModal" />
 </view>

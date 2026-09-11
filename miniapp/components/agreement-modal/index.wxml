@@ -1,0 +1,14 @@
+<view class="agree-mask" wx:if="{{show}}" catchtouchmove="noop">
+  <view class="agree-panel">
+    <view class="agree-title">用户协议与隐私政策</view>
+    <scroll-view class="agree-body" scroll-y>
+      <view class="agree-text">欢迎使用「迈科咖啡」小程序。在登录前，请您阅读并同意以下条款。我们会在您下单配送时收集收货人姓名、联系电话、收货地址，仅用于订单配送，不会用于其他用途。</view>
+      <view class="agree-links">
+        <text class="agree-link" catchtap="goUserAgreement">《用户服务协议》</text>
+        <text class="agree-link" catchtap="goPrivacyPolicy">《隐私政策》</text>
+      </view>
+    </scroll-view>
+    <button class="agree-primary" bindtap="onAgree">同意并登录</button>
+    <view class="agree-secondary" bindtap="onDisagree">不同意</view>
+  </view>
+</view>

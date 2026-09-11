@@ -135,6 +135,21 @@
 
 ---
 
+## 环境与路径
+
+| 机器 | 路径 / 入口 | 用途 |
+|------|------|------|
+| 个人云（AI 工作机） | `/home/mbcpc/MyProjects/MK-Coffee` | git 源头、Django 后端、部署配置、文档；AI 全部操作在这台 |
+| 远程 Mac（微信开发者工具） | `kaima@MacBook:~/Documents/mbc/Projects/MK-Coffee` | 小程序上传、真机截图 |
+| 腾服（生产） | `ssh ubuntu@124.220.108.118` → `~/MK-Coffee` | db + backend + nginx 三容器 |
+| 官网（新） | `https://mk-coffee.cn`（落地页源文件 `deploy/site/index.html`） | 公安备案核验用 |
+
+**小程序代码改动流程**：个人云改代码 → commit + push GitHub → Mac 上 `git pull origin main` → 开发者工具「编译」→ 上传。
+
+**截图/材料回传**：Mac 侧截图放到个人云 `backend/NN.png`（已被 `.gitignore` 忽略，不会入库）。
+
+---
+
 ## 腾服运维速查
 
 ```bash

@@ -57,6 +57,8 @@ Page({
   goOrders() { wx.switchTab({ url: '/pages/order/order' }) },
   goAddress() { wx.navigateTo({ url: '/pages/addresses/addresses' }) },
   goCoupons() { wx.navigateTo({ url: '/pages/coupons/coupons' }) },
+  goUserAgreement() { wx.navigateTo({ url: '/pages/agreement/agreement?type=user' }) },
+  goPrivacyPolicy() { wx.navigateTo({ url: '/pages/agreement/agreement?type=privacy' }) },
   // goStore() { wx.navigateTo({ url: '/pages/store/store' }) }, // 门店导航：暂未设立对外门店，入口已注释隐藏
 
   // ---- 编辑资料 ----

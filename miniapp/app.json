@@ -7,7 +7,8 @@
     "pages/user/user",
     "pages/store/store",
     "pages/coupons/coupons",
-    "pages/addresses/addresses"
+    "pages/addresses/addresses",
+    "pages/agreement/agreement"
   ],
   "window": {
     "navigationBarBackgroundColor": "#3d2b1f",

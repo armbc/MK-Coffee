@@ -1,0 +1,57 @@
+.doc {
+  padding: 48rpx 40rpx 100rpx;
+  max-width: 960px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.doc-header {
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+.doc-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 1rpx;
+}
+
+.doc-updated {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--color-text-muted);
+}
+
+.doc-intro {
+  margin-top: 32rpx;
+  font-size: 28rpx;
+  color: var(--color-text);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.doc-section {
+  margin-top: 44rpx;
+}
+
+.doc-h {
+  font-size: 31rpx;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 16rpx;
+}
+
+.doc-p {
+  font-size: 27rpx;
+  color: var(--color-text);
+  line-height: 1.85;
+  margin-bottom: 12rpx;
+}
+
+.doc-footer {
+  margin-top: 72rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--color-text-muted);
+}

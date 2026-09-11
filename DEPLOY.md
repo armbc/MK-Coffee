@@ -94,8 +94,10 @@ docker compose logs backend     # 只看后端
 
 ### 证书信息
 - 颁发机构：Let's Encrypt
-- 有效期至：**2026-11-05**
+- 有效期至：**2026-12-10**
 - 证书路径：`/etc/letsencrypt/live/api.mk-coffee.com/`
+- SAN 覆盖：`api.mk-coffee.cn`、`mk-coffee.cn`、`www.mk-coffee.cn`（`api.mk-coffee.com` 已于 2026-09-11 移出，该域名弃用）
+- 验证方式：**webroot**（`/var/www/certbot`）——原为 standalone，会与 nginx 抢 80 端口（到期续期必失败），2026-09-11 扩展证书时一并修正；`certbot renew --dry-run` 已通过
 - Docker volume：`mk-coffee_certbot_conf`
 
 ### 自动续期
@@ -120,18 +122,20 @@ docker run --rm \
 
 用途：公安联网备案「新办网站」核验要求裸域可直接打开并展示 ICP 备案号；此前裸域与 www 均无 DNS 解析、nginx 也无对应站点。
 
+**状态：✅ 已上线（2026-09-11）** —— `https://mk-coffee.cn` 200、`www` 301 → 裸域、HTTP 全量 301 到 HTTPS。
+
 ### 文件组成
 
 | 文件 | 作用 |
 |------|------|
 | `deploy/site/index.html` | 静态落地页（公司名称 + `苏ICP备2026059759号-1`；公安备案号已留注释模板） |
-| `deploy/nginx/conf.d/mk-coffee.cn.conf` | **阶段一**：仅 HTTP（DNS 一生效就能打开） |
-| `deploy/nginx/conf.d/mk-coffee.cn-ssl.conf.example` | **阶段二**：HTTPS 完整版（证书就绪后启用） |
-| `docker-compose.yml` | nginx 新增挂载 `./deploy/site:/var/www/site:ro` |
+| `deploy/nginx/conf.d/mk-coffee.cn.conf` | **生产配置**：HTTP 跳转 + HTTPS 主站（依赖已签发证书） |
+| `deploy/nginx/conf.d/mk-coffee.cn-http.conf.example` | 备选：仅 HTTP（全新部署、证书未就绪时顶替上一行） |
+| `docker-compose.yml` | nginx 挂载 `./deploy/site:/var/www/site:ro` |
 
-> 两个阶段都已在腾服用生产同款镜像（nginx 1.31.3 + 临时容器 + 假证书）实测通过：语法、`http://mk-coffee.cn` 200、`www` 301、ACME 路径命中、api 站点不受影响。
+> ⚠️ `mk-coffee.cn.conf` 依赖 `/etc/letsencrypt/live/api.mk-coffee.com/` 下的证书，证书不存在会让 nginx 启动失败：全新部署请先用 `mk-coffee.cn-http.conf.example` 顶替，签好证书再换回。
 
-### 上线步骤
+### 上线记录（2026-09-11 实际执行）
 
 1）DNSPod 添加解析（备案填报的网站访问地址是裸域）：
 
@@ -140,34 +144,24 @@ docker run --rm \
 www  A    124.220.108.118
 ```
 
-2）部署阶段一：
+2）部署站点：`docker compose up -d --force-recreate nginx`
 
-```bash
-cd ~/MK-Coffee && git pull && docker compose up -d --force-recreate nginx
-curl -I http://mk-coffee.cn          # 期望 200
-```
-
-3）签发证书（扩展现有证书 SAN，一次续期覆盖全部域名）：
+3）签发/扩展证书（webroot，扩展后 SAN = api.mk-coffee.cn + mk-coffee.cn + www.mk-coffee.cn）：
 
 ```bash
 docker run --rm \
   -v mk-coffee_certbot_www:/var/www/certbot:rw \
   -v mk-coffee_certbot_conf:/etc/letsencrypt:rw \
   certbot/certbot certonly --webroot -w /var/www/certbot \
-    --cert-name api.mk-coffee.com --expand \
-    -d api.mk-coffee.com -d api.mk-coffee.cn -d mk-coffee.cn -d www.mk-coffee.cn
+    --cert-name api.mk-coffee.com \
+    -d api.mk-coffee.cn -d mk-coffee.cn -d www.mk-coffee.cn
 ```
 
-4）切到阶段二（HTTPS）：
+4）`docker compose restart nginx` 生效 HTTPS 配置
 
-```bash
-cd ~/MK-Coffee
-cp deploy/nginx/conf.d/mk-coffee.cn-ssl.conf.example deploy/nginx/conf.d/mk-coffee.cn.conf
-docker compose restart nginx
-curl -I https://mk-coffee.cn         # 期望 200
-```
+5）验证：公网 `https://mk-coffee.cn` 200（证书链受信任）、`http://mk-coffee.cn` 与 `http://www.mk-coffee.cn` 均 301 → HTTPS、`api.mk-coffee.cn` 回归 200、`certbot renew --dry-run` 通过
 
-5）公安备案号下发后，把「苏公网安备…号」+ 图标加进 `deploy/site/index.html` 的 footer（文件里已留注释模板）。
+6）公安备案号下发后，把「苏公网安备…号」+ 图标加进 `deploy/site/index.html` 的 footer（文件里已留注释模板）
 
 ---
 

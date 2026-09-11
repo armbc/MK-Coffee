@@ -1,0 +1,53 @@
+# ============================================================
+# 迈科咖啡 · 官网落地页（备选：仅 HTTP）
+# 域名：mk-coffee.cn / www.mk-coffee.cn
+# ============================================================
+# 用途：仅当 TLS 证书不可用（全新部署、证书签发前）时顶替
+#       mk-coffee.cn.conf 使用。生产环境正常状态用 HTTPS 版。
+#
+#   新部署：cp mk-coffee.cn-http.conf.example mk-coffee.cn.conf
+#   证书就绪：换回仓库版 mk-coffee.cn.conf（HTTPS）
+# ============================================================
+
+# ---- www → 裸域（备案填报的访问地址是裸域，统一收敛）----
+server {
+    listen 80;
+    server_name www.mk-coffee.cn;
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 http://mk-coffee.cn$request_uri;
+    }
+}
+
+# ---- 主站：静态落地页 ----
+server {
+    listen 80;
+    server_name mk-coffee.cn;
+    server_tokens off;
+
+    # Let's Encrypt ACME 验证
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    root /var/www/site;
+    index index.html;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+}

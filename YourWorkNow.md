@@ -52,7 +52,8 @@
 | 41 | **小程序备案完成**：苏ICP备2026059759号-2X；已填入 user 页 footer（`ICP备案号：苏ICP备2026059759号-2X`，样式加粗加深） | 9/11 |
 | 42 | **官网落地页就绪（本地已备、未部署）**：`deploy/site/index.html` + `mk-coffee.cn.conf`（HTTP）/`-ssl.conf.example`（HTTPS）；腾服用生产同款镜像实测两阶段全绿 | 9/11 |
 | 43 | **官网正式上线**：DNSPod 加 `@`/`www` A 记录 → 腾服部署站点 → 公网 `https://mk-coffee.cn` 200（页面含公司名 + `苏ICP备2026059759号-1`），`www`/HTTP 均 301 → 裸域 HTTPS；api 站点回归 200 | 9/11 |
-| 44 | **证书扩展 + 续期隐悲修复**：SAN 增加 `mk-coffee.cn`/`www.mk-coffee.cn`（移除弃用的 `.com`），到期 2026-12-10；发现原 renewal 为 standalone（与 nginx 抢 80 端口，到期必续期失败），本次改为 webroot，`renew --dry-run` 通过 | 9/11 |
+| 44 | **证书扩展 + 续期隐患修复**：SAN 增加 `mk-coffee.cn`/`www.mk-coffee.cn`（移除弃用的 `.com`），到期 2026-12-10；发现原 renewal 为 standalone（与 nginx 抢 80 端口，到期必续期失败），本次改为 webroot，`renew --dry-run` 通过 | 9/11 |
+| 45 | **微信 1.0.0 审核驳回整改（常见拒绝情形 3.4）**：新增协议页 `pages/agreement`（用户服务协议 14 章 + 隐私政策 9 章）+ 首页首次进入同意弹窗（未同意前隐藏 tabBar 挡屏、可退出）+ user 页 footer 常驻入口；版本号 v1.0.2；自检 12/12 JS + wxml 配对全过 | 9/11 |
 
 ---
 

@@ -1,0 +1,81 @@
+# ============================================================
+# 迈科咖啡 · 官网落地页（阶段二：HTTPS 完整版）
+# 用法：证书就绪后
+#     cp mk-coffee.cn-ssl.conf.example mk-coffee.cn.conf
+#     docker compose restart nginx
+# ============================================================
+# 证书来源（二选一，默认走方案 A）：
+#   A. 扩展现有证书 SAN（推荐，一次续期覆盖全部域名）
+#      docker run --rm \
+#        -v mk-coffee_certbot_www:/var/www/certbot \
+#        -v mk-coffee_certbot_conf:/etc/letsencrypt \
+#        certbot/certbot certonly --webroot -w /var/www/certbot \
+#          --cert-name api.mk-coffee.com --expand \
+#          -d api.mk-coffee.com -d api.mk-coffee.cn -d mk-coffee.cn -d www.mk-coffee.cn
+#      → 证书路径不变：/etc/letsencrypt/live/api.mk-coffee.com/
+#   B. 单独为裸域签发（路径改为 /etc/letsencrypt/live/mk-coffee.cn/）
+# ============================================================
+
+# ---- HTTP：ACME 验证 + 全量跳转 HTTPS ----
+server {
+    listen 80;
+    server_name mk-coffee.cn www.mk-coffee.cn;
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://mk-coffee.cn$request_uri;
+    }
+}
+
+# ---- HTTPS：www → 裸域 ----
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name www.mk-coffee.cn;
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/api.mk-coffee.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.mk-coffee.com/privkey.pem;
+
+    return 301 https://mk-coffee.cn$request_uri;
+}
+
+# ---- HTTPS 主站 ----
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name mk-coffee.cn;
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/api.mk-coffee.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.mk-coffee.com/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # ======== 安全头 ========
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    root /var/www/site;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+}

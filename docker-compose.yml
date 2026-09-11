@@ -87,6 +87,7 @@ services:
       - "443:443"
     volumes:
       - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/site:/var/www/site:ro
       - static_volume:/static:ro
       - media_volume:/media:ro
       - certbot_www:/var/www/certbot:ro

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="苏州迈科咖啡有限公司官方网站 — 咖啡豆烘焙与咖啡饮品销售，微信小程序「迈科咖啡」在线点单。">
+<title>迈科咖啡 MK-Coffee · 苏州迈科咖啡有限公司</title>
+<style>
+  :root {
+    --bg: #faf6f1;
+    --brown: #4a3428;
+    --brown-light: #7a6355;
+    --accent: #a9714b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--brown);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.7;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 64px 24px 32px;
+  }
+  .mark { font-size: 44px; line-height: 1; }
+  h1 {
+    margin: 20px 0 8px;
+    font-size: 26px;
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+  .company {
+    margin: 0 0 24px;
+    font-size: 15px;
+    color: var(--brown-light);
+    letter-spacing: 1px;
+  }
+  .divider {
+    width: 48px;
+    height: 2px;
+    background: var(--accent);
+    opacity: .5;
+    margin: 0 0 24px;
+  }
+  .desc {
+    margin: 0;
+    max-width: 460px;
+    font-size: 15px;
+    color: var(--brown-light);
+  }
+  footer {
+    padding: 28px 24px 36px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--brown-light);
+    border-top: 1px solid rgba(74, 52, 40, .08);
+  }
+  footer p { margin: 6px 0; }
+  footer a {
+    color: var(--brown-light);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(122, 99, 85, .35);
+  }
+  footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <main>
+    <div class="mark">☕</div>
+    <h1>MK-Coffee 迈科咖啡</h1>
+    <p class="company">苏州迈科咖啡有限公司</p>
+    <div class="divider"></div>
+    <p class="desc">
+      咖啡豆烘焙与咖啡饮品销售。<br>
+      线上点单请使用微信小程序「迈科咖啡」。
+    </p>
+  </main>
+
+  <footer>
+    <p>© 2026 苏州迈科咖啡有限公司</p>
+    <p>
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">苏ICP备2026059759号-1</a>
+    </p>
+    <!-- 公安联网备案通过后，在此补一行（带图标链接，图标文件放本目录）：
+    <p>
+      <a href="https://beian.mps.gov.cn/#/query/webSearch?code=XXXXXXXXXXXXXXXX" target="_blank" rel="noopener noreferrer">
+        <img src="/beian.png" alt="公安备案图标" style="vertical-align:-3px;height:16px;">
+        苏公网安备XXXXXXXXXXXXXXXX号
+      </a>
+    </p>
+    -->
+  </footer>
+</body>
+</html>

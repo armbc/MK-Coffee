@@ -116,6 +116,61 @@ docker run --rm \
 
 ---
 
+## 官网落地页（mk-coffee.cn）
+
+用途：公安联网备案「新办网站」核验要求裸域可直接打开并展示 ICP 备案号；此前裸域与 www 均无 DNS 解析、nginx 也无对应站点。
+
+### 文件组成
+
+| 文件 | 作用 |
+|------|------|
+| `deploy/site/index.html` | 静态落地页（公司名称 + `苏ICP备2026059759号-1`；公安备案号已留注释模板） |
+| `deploy/nginx/conf.d/mk-coffee.cn.conf` | **阶段一**：仅 HTTP（DNS 一生效就能打开） |
+| `deploy/nginx/conf.d/mk-coffee.cn-ssl.conf.example` | **阶段二**：HTTPS 完整版（证书就绪后启用） |
+| `docker-compose.yml` | nginx 新增挂载 `./deploy/site:/var/www/site:ro` |
+
+> 两个阶段都已在腾服用生产同款镜像（nginx 1.31.3 + 临时容器 + 假证书）实测通过：语法、`http://mk-coffee.cn` 200、`www` 301、ACME 路径命中、api 站点不受影响。
+
+### 上线步骤
+
+1）DNSPod 添加解析（备案填报的网站访问地址是裸域）：
+
+```
+@    A    124.220.108.118
+www  A    124.220.108.118
+```
+
+2）部署阶段一：
+
+```bash
+cd ~/MK-Coffee && git pull && docker compose up -d --force-recreate nginx
+curl -I http://mk-coffee.cn          # 期望 200
+```
+
+3）签发证书（扩展现有证书 SAN，一次续期覆盖全部域名）：
+
+```bash
+docker run --rm \
+  -v mk-coffee_certbot_www:/var/www/certbot:rw \
+  -v mk-coffee_certbot_conf:/etc/letsencrypt:rw \
+  certbot/certbot certonly --webroot -w /var/www/certbot \
+    --cert-name api.mk-coffee.com --expand \
+    -d api.mk-coffee.com -d api.mk-coffee.cn -d mk-coffee.cn -d www.mk-coffee.cn
+```
+
+4）切到阶段二（HTTPS）：
+
+```bash
+cd ~/MK-Coffee
+cp deploy/nginx/conf.d/mk-coffee.cn-ssl.conf.example deploy/nginx/conf.d/mk-coffee.cn.conf
+docker compose restart nginx
+curl -I https://mk-coffee.cn         # 期望 200
+```
+
+5）公安备案号下发后，把「苏公网安备…号」+ 图标加进 `deploy/site/index.html` 的 footer（文件里已留注释模板）。
+
+---
+
 ## Docker Compose 架构
 
 ```

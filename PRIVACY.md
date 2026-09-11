@@ -48,7 +48,7 @@
 |----|------|
 | `app.json` `permission.scope.userLocation.desc`（定位授权文案） | ✅ 已配（`43eca47`） |
 | `app.json` `requiredPrivateInfos: ["getLocation"]`（隐私接口声明） | ✅ 已配（`43eca47`） |
-| 备案号展示（user 页 footer） | ✅ `苏ICP备2026059759号` |
+| 备案号展示（user 页 footer） | ✅ `ICP备案号：苏ICP备2026059759号-2X`（小程序备案编号，2026-09-11 更新） |
 | 版本号 | ✅ v1.0.0 |
 
 ---

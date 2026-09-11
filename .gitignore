@@ -59,3 +59,7 @@ backend/[0-9][0-9].png
 backend/陈东*.jpg
 backend/陈东*.jpeg
 backend/陈东*.png
+
+# 域名证书（含主体信息，本地保留，勿提交）
+backend/mk-coffee.cn*.jpg
+backend/mk-coffee.cn*.png

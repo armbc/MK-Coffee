@@ -59,7 +59,7 @@
   <!-- 品牌信息 -->
   <view class="brand-footer">
     <text class="brand-name">MK-Coffee 迈科咖啡</text>
-    <text class="brand-version">v1.0.2</text>
+    <text class="brand-version">v1.0.3</text>
     <view class="legal-links">
       <text class="legal-link" bindtap="goUserAgreement">用户服务协议</text>
       <text class="legal-sep">|</text>

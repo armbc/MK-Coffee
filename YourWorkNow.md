@@ -54,6 +54,8 @@
 | 43 | **官网正式上线**：DNSPod 加 `@`/`www` A 记录 → 腾服部署站点 → 公网 `https://mk-coffee.cn` 200（页面含公司名 + `苏ICP备2026059759号-1`），`www`/HTTP 均 301 → 裸域 HTTPS；api 站点回归 200 | 9/11 |
 | 44 | **证书扩展 + 续期隐患修复**：SAN 增加 `mk-coffee.cn`/`www.mk-coffee.cn`（移除弃用的 `.com`），到期 2026-12-10；发现原 renewal 为 standalone（与 nginx 抢 80 端口，到期必续期失败），本次改为 webroot，`renew --dry-run` 通过 | 9/11 |
 | 45 | **微信 1.0.0 审核驳回整改（常见拒绝情形 3.4）**：新增协议页 `pages/agreement`（用户服务协议 14 章 + 隐私政策 9 章）+ 首页首次进入同意弹窗（未同意前隐藏 tabBar 挡屏、可退出）+ user 页 footer 常驻入口；版本号 v1.0.2；自检 12/12 JS + wxml 配对全过 | 9/11 |
+| 46 | **协议同意时机改为登录前**（按用户反馈）：新增 `utils/agreement.js` + 组件 `components/agreement-modal`；首页撤掉挡屏弹窗→底部提示条；登录前强制确认；`wxLogin()` 兜底校验 | 9/11 |
+| 47 | **移除位置接口声明**（提审被拦修复）：`app.json` 删 `requiredPrivateInfos`/`permission`，`store.js` 删 `wx.getLocation` 调用，隐私政策改为 4 类信息；全项目无位置接口声明与调用 | 9/11 |
 
 ---
 
@@ -92,6 +94,7 @@
 | 3 | user 页 footer 常驻入口 | 「用户服务协议 | 隐私政策」，随时可查 |
 | 4 | 版本号 | `v1.0.2`（上传时填 1.0.2） |
 | 5 | 自检 | 12/12 JS 语法通过；wxml 标签配对全部通过；JSON 合法；协议正文覆盖 5 类信息与 1095 天表述 |
+| 6 | 移除位置接口声明（提审被拦后修复） | 图 33：提交审核被拦「接口无权限：wx.getLocation」。修复：`app.json` 删除 `requiredPrivateInfos`/`permission`；`store.js` 删除 `wx.getLocation` 调用；隐私政策位置信息条目删除→改为 4 类信息（openid/头像昵称/收货地址/订单支付） |
 
 **你要做的**：
 

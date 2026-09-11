@@ -29,21 +29,10 @@ Page({
     },
   },
 
-  onLoad() {
-    // 获取当前位置作为地图中心，但 marker 与导航始终使用门店坐标
-    wx.getLocation({
-      type: 'gcj02',
-      success: (res) => {
-        this.setData({
-          latitude: res.latitude,
-          longitude: res.longitude,
-        })
-      },
-      fail: (err) => {
-        console.warn('获取当前位置失败', err)
-      },
-    })
-  },
+  // 说明：门店功能未上线（入口在 user 页已注释隐藏），此处不再调用 wx.getLocation。
+  // 微信自 2022 年起对位置类接口实行申请制（需在 mp 后台「开发管理 → 接口设置」开通）；
+  // 未开通却声明 requiredPrivateInfos 会导致提交审核被拦截。
+  // 地图固定以门店坐标为中心；设立对外门店并开通位置接口后再恢复定位。
 
   /** 拨打电话 */
   onCall() {

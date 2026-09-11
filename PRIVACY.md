@@ -21,7 +21,7 @@
 |---|---------|---------|----------------------|---------|
 | 1 | 账号信息（openid） | 微信登录自动获取（`wx.login` → 后端 `jscode2session`） | 用于微信登录，识别用户身份、同步订单与优惠券数据 | `miniapp/app.js` → `POST /api/auth/wx-login/` |
 | 2 | 用户信息（头像、昵称） | 用户主动填写（微信头像昵称填写能力） | 用于编辑个人资料并在「我的」页展示 | `miniapp/pages/user/user.wxml`（`open-type="chooseAvatar"` + nickname 输入）→ `POST /api/user/me/update/` |
-| 3 | 位置信息 | `wx.getLocation`（gcj02） | 用于门店地图展示当前位置，方便导航到门店 | `miniapp/pages/store/store.js`（store 页入口当前已注释隐藏） |
+| 3 | ~~位置信息~~ | ~~`wx.getLocation`（gcj02）~~ | **⛔ 已移除（2026-09-11）**：门店功能未上线；微信对位置类接口实行申请制，未在后台开通时声明 `requiredPrivateInfos` 会导致提交审核被拦（图 33）——`app.json` 声明与 `store.js` 调用已一并删除 | — |
 | 4 | 收货地址（含手机号） | 用户主动填写（表单手填，非一键授权） | 用于订单配送、联系收货人 | `miniapp/pages/addresses/addresses.js` → `/api/addresses/` |
 | 5 | 支付信息（交易记录） | 微信支付（商户号 1110736757 已接入，9/8 真机验证通过） | 用于订单支付、退款与交易记录展示 | `payments/` 模块 + 订单支付；真实支付已启用 |
 
@@ -46,8 +46,7 @@
 
 | 项 | 状态 |
 |----|------|
-| `app.json` `permission.scope.userLocation.desc`（定位授权文案） | ✅ 已配（`43eca47`） |
-| `app.json` `requiredPrivateInfos: ["getLocation"]`（隐私接口声明） | ✅ 已配（`43eca47`） |
+| ~~`app.json` 定位声明~~ | ⛔ **已移除（2026-09-11）**：`permission.scope.userLocation` 与 `requiredPrivateInfos: ["getLocation"]` 均已删除；`store.js` 不再调用 `wx.getLocation`。恢复门店功能时需先在 mp 后台「开发管理 → 接口设置」申请位置接口权限 |
 | 备案号展示（user 页 footer） | ✅ `ICP备案号：苏ICP备2026059759号-2X`（小程序备案编号，2026-09-11 更新） |
 | 小程序内协议 | ✅ `pages/agreement`（用户服务协议 14 章 / 隐私政策 9 章，约 3000 字）；同意机制：**登录前**弹确认弹窗（组件 `components/agreement-modal`，可点开协议全文）+ 首页底部提示条（未同意时显示）+ user 页 footer 常驻入口 + `app.wxLogin()` 兜底校验（2026-09-11，应审核驳回「常见拒绝情形 3.4」） |
 | 版本号 | ✅ v1.0.2 |
@@ -60,6 +59,7 @@
 2. **重新上传**：代码或隐私指引有改动后，需重新上传体验版再提交审核
 3. **基础库**：隐私弹窗由用户微信客户端基础库（≥2.32.3）自动处理，开发者工具可模拟；`project.config.json` 的 libVersion 2.18.0 仅影响工具调试
 4. **审核打回**：把驳回理由发 Codewhale，按原因定位代码/资料问题
+5. **接口权限（2026-09-11 教训）**：位置类接口（`wx.getLocation` 等）自 2022 年起为**申请制**，需在 mp 后台「开发管理 → 接口设置」开通后才能使用；未开通却在 `app.json` 里声明 `requiredPrivateInfos`，会在**提交审核时直接拦截**。原则：不用的接口不声明；要用的先申请。
 
 ---
 

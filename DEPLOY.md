@@ -128,7 +128,8 @@ docker run --rm \
 
 | 文件 | 作用 |
 |------|------|
-| `deploy/site/index.html` | 静态落地页（公司名称 + `苏ICP备2026059759号-1`；公安备案号已留注释模板） |
+| `deploy/site/index.html` | 静态落地页（公司名称 + `苏ICP备2026059759号-1` + `苏公网安备32058302006935号`） |
+| `deploy/site/beian.png` | 公安备案图标（20×20 RGBA，取自备案系统「下载中心」的 `national emblem.png`，2026-09-15） |
 | `deploy/nginx/conf.d/mk-coffee.cn.conf` | **生产配置**：HTTP 跳转 + HTTPS 主站（依赖已签发证书） |
 | `deploy/nginx/conf.d/mk-coffee.cn-http.conf.example` | 备选：仅 HTTP（全新部署、证书未就绪时顶替上一行） |
 | `docker-compose.yml` | nginx 挂载 `./deploy/site:/var/www/site:ro` |
@@ -161,7 +162,7 @@ docker run --rm \
 
 5）验证：公网 `https://mk-coffee.cn` 200（证书链受信任）、`http://mk-coffee.cn` 与 `http://www.mk-coffee.cn` 均 301 → HTTPS、`api.mk-coffee.cn` 回归 200、`certbot renew --dry-run` 通过
 
-6）公安备案号下发后，把「苏公网安备…号」+ 图标加进 `deploy/site/index.html` 的 footer（文件里已留注释模板）
+6）✅ 公安备案号已下发（`苏公网安备32058302006935号`，2026-09-15）——已补入 footer（图标 `beian.png` 取自备案系统「下载中心」）并重新部署
 
 ---
 

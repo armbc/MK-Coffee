@@ -1,0 +1,50 @@
+# ============================================================
+# 迈科咖啡 · 官网服务单元（mk-coffee.cn）
+# ============================================================
+# 安装：
+#   sudo cp deploy/mkweb.service /etc/systemd/system/mkweb.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now mkweb
+#
+# 前置条件：
+#   - Node 22 位于 /usr/local/bin/node（见 DEPLOY.md「官网」一节）
+#   - 应用根目录 /home/ubuntu/mkweb，内含 dist/ 与 .env
+#   - .env 至少包含 PORT / HOST / APP_ID / APP_SECRET / DATABASE_URL / WECOM_WEBHOOK
+#
+# HOST 必须是 172.17.0.1（Docker bridge 网关）：nginx 在容器内反代到这里，
+# 服务本身不监听公网接口。改 .env 的 HOST 后需 restart，
+# 否则 3100 端口会暴露在公网上（服务器 UFW 当前为 inactive）。
+# ============================================================
+
+[Unit]
+Description=MK Coffee Official Website (mk-coffee.cn)
+Documentation=file:///home/ubuntu/MK-Coffee/DEPLOY.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/mkweb
+EnvironmentFile=/home/ubuntu/mkweb/.env
+ExecStart=/usr/local/bin/node dist/boot.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mkweb
+
+# 加固：只允许 IPv4/IPv6/Unix 套接字，禁止提权与内核面改动
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryMax=384M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

@@ -339,8 +339,94 @@ docker compose down && docker compose up -d
 ```
 
 ### MySQL 数据备份
+
+备份由 `deploy/backup-mysql.sh` 完成，cron 每日 03:30 自动执行：
+
 ```bash
+# 手动备份一次
+bash ~/MK-Coffee/deploy/backup-mysql.sh
+
+# 查看已有备份
+bash ~/MK-Coffee/deploy/backup-mysql.sh --list
+
+# 校验完整性
+cd ~/backup/mysql && sha256sum -c SHA256SUMS
+```
+
+- 备份位置：`~/backup/mysql/`，文件名 `mkcoffee-YYYYMMDD-HHMMSS.sql.gz`
+- 保留 30 天（`RETENTION_DAYS=30`），超期自动轮转
+- 每个库做四重校验：大小 > 100 字节、`gzip -t`、尾部含 `-- Dump completed`、
+  `CREATE TABLE` 数不低于阈值（`mkcoffee:20`、`mkweb:1`）。任一不过则删除产物并返回 1
+- cron 日志：`~/backup/cron.log`；失败时脚本退出码非 0
+
+**不要用下面这种写法** —— 它会在失败时静默产出合法文件：
+
+```bash
+# ✗ 错误：三个隐患
+#   1. $DB_PASSWORD 在宿主机是空值（密码只存在于容器环境）
+#   2. docker exec 默认走 socket，命中 root@localhost，与 Django 用的 root@% 密码不同
+#   3. mysqldump 失败时输出为空，gzip 仍会生成 20 字节的合法 .gz 且 exit code = 0
+#      → 你以为备份成功了，其实里面什么都没有
 docker compose exec db mysqldump -u root -p"$DB_PASSWORD" mkcoffee > backup.sql
+```
+
+正确的底层命令（脚本内部即此写法）：
+
+```bash
+# 密码从 Django settings 取（base64 传输，因为密码是 bytes 且含非 ASCII）
+DBP_B64=$(docker exec mk-coffee-backend-1 python -c '
+import os, django, sys, base64
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mkcoffee.settings.production")
+django.setup()
+from django.conf import settings
+p = settings.DATABASES["default"]["PASSWORD"]
+raw = p.encode("latin-1") if isinstance(p, str) else p
+sys.stdout.write(base64.b64encode(raw).decode("ascii"))
+')
+DBP=$(printf '%s' "$DBP_B64" | base64 -d)
+
+docker exec -e MYSQL_PWD="$DBP" mk-coffee-db-1 \
+  mysqldump -uroot -h 127.0.0.1 --protocol=TCP \
+  --single-transaction --quick --routines \
+  --default-character-set=utf8mb4 mkcoffee | gzip -6 > mkcoffee.sql.gz
+```
+
+### 从备份恢复
+
+**先恢复到临时库验证，确认无误再改动生产库。**
+
+下文的 `$DBP` 指 MySQL root 密码，先按上一节「正确的底层命令」取一次（同在同一个 shell 会话中执行为佳）。
+
+```bash
+cd ~/backup/mysql
+
+# 1. 建临时库
+docker exec mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 \
+  -e "CREATE DATABASE mkcoffee_restoretest"
+
+# 2. 导入（--default-character-set 不能省，否则中文可能写坏）
+gunzip -c mkcoffee-YYYYMMDD-HHMMSS.sql.gz | \
+  docker exec -i mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 \
+  mkcoffee_restoretest
+
+# 3. 核对表数（应为 22）
+docker exec mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 -N -e \
+  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='mkcoffee_restoretest'"
+
+# 4. 抽查数据（不加 --default-character-set 中文会显示成 ????）
+docker exec mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 \
+  mkcoffee_restoretest -e "SELECT id,name,price FROM products LIMIT 3"
+
+# 5. 确认无误后删临时库
+docker exec mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 \
+  -e "DROP DATABASE mkcoffee_restoretest"
+```
+
+生产库真需要回滚时（会覆盖现有数据，务必先另存一份当前备份）：
+
+```bash
+gunzip -c mkcoffee-YYYYMMDD-HHMMSS.sql.gz | \
+  docker exec -i mk-coffee-db-1 mysql -uroot -p"$DBP" --default-character-set=utf8mb4 mkcoffee
 ```
 
 ---

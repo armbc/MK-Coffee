@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 烘焙纸 cream 基底 */
+    --background: 57 46% 94%;
+    --foreground: 0 0% 11%;
+    --card: 57 46% 94%;
+    --card-foreground: 0 0% 11%;
+    --popover: 57 46% 94%;
+    --popover-foreground: 0 0% 11%;
+    /* 金赭 accent */
+    --primary: 46 40% 51%;
+    --primary-foreground: 0 0% 11%;
+    --secondary: 55 33% 89%;
+    --secondary-foreground: 0 0% 11%;
+    --muted: 55 26% 88%;
+    --muted-foreground: 45 7% 38%;
+    --accent: 46 40% 51%;
+    --accent-foreground: 0 0% 11%;
+    --destructive: 0 56% 53%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 45 14% 80%;
+    --input: 45 14% 80%;
+    --ring: 46 40% 45%;
+    --radius: 0.375rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Fraunces", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+      sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.85);
+    color: hsl(var(--primary-foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  /* 展示衬线（中西文混排） */
+  .font-display {
+    font-family: "Fraunces", "Noto Serif SC", "Songti SC", "SimSun", serif;
+    font-weight: 500;
+  }
+
+  .font-display-light {
+    font-family: "Fraunces", "Noto Serif SC", "Songti SC", "SimSun", serif;
+    font-weight: 300;
+  }
+
+  /* 黑体（无衬线中西文混排） */
+  .font-hei {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+      "Fraunces", sans-serif;
+    font-weight: 400;
+  }
+
+  /* 深烘底色上的文字 */
+  .text-on-roast-muted {
+    color: hsl(45 20% 72%);
+  }
+
+  /* 滚动显现 */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px) scale(0.99);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* 跑马灯 */
+  .marquee-track {
+    animation: marquee 240s linear infinite;
+  }
+
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* 印刷颗粒 */
+  .grain-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* 虚线规格纹理 */
+  .dot-line {
+    background-image: radial-gradient(
+      circle,
+      currentColor 1px,
+      transparent 1.2px
+    );
+    background-size: 12px 2px;
+    background-repeat: repeat-x;
+    background-position: 0 center;
+    height: 2px;
+    opacity: 0.5;
+  }
+
+  /* 圆形描边按钮的 hover 补全动画 */
+  .circle-btn .ring-anim {
+    stroke-dasharray: 132;
+    stroke-dashoffset: 132;
+    transition: stroke-dashoffset 0.35s ease-out;
+  }
+
+  .circle-btn:hover .ring-anim,
+  .circle-btn:focus-visible .ring-anim {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .marquee-track {
+    animation: none;
+  }
+}

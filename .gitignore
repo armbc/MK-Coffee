@@ -63,3 +63,8 @@ backend/陈东*.png
 # 域名证书（含主体信息，本地保留，勿提交）
 backend/mk-coffee.cn*.jpg
 backend/mk-coffee.cn*.png
+
+# 官网部署包（110MiB，超过 GitHub 单文件 100MiB 硬限制，push 会被拒绝；
+# 且一旦进入历史就需 filter-repo 重写才能清除）
+# 只排除压缩包，Myfiles/mk-web 源码仍需入库
+Myfiles/*.zip
